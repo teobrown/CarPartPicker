@@ -5,11 +5,17 @@ import { config } from 'dotenv';
 config({ path: '.env.local' });
 
 async function main() {
-  // Import after dotenv has loaded so DATABASE_URL is available when
-  // lib/db/client.ts initializes the postgres connection pool.
-  const { runVehicleSeed } = await import('./vehicles');
-  const n = await runVehicleSeed();
-  console.log(`vehicles seeded: ${n}`);
+  // Registry pattern: adding a new seed is a one-line edit. Imports are
+  // lazy so dotenv has loaded before lib/db/client.ts initializes the
+  // postgres connection pool.
+  const seeds = [
+    { name: 'vehicles', run: () => import('./vehicles').then((m) => m.runVehicleSeed()) },
+    // categories + vendors will be added in subsequent commits
+  ];
+  for (const s of seeds) {
+    const n = await s.run();
+    console.log(`${s.name} seeded: ${n}`);
+  }
 }
 
 main()

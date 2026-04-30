@@ -1,15 +1,20 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { db } from '@/lib/db/client';
-import { vehicles } from '@/lib/db/schema';
+import { vehicles, categories, vendors } from '@/lib/db/schema';
 import { sql, eq } from 'drizzle-orm';
 import { runVehicleSeed } from '@/lib/db/seed/vehicles';
+// future imports for runCategorySeed, runVendorSeed go here
+
+beforeAll(async () => {
+  // Truncate ALL seed-owned tables in one CASCADE so FK references don't break
+  // when a sibling table is wiped. Order doesn't matter with CASCADE; restarting
+  // identity is best-effort to keep IDs predictable.
+  await db.execute(sql`TRUNCATE TABLE vehicles, categories, vendors RESTART IDENTITY CASCADE`);
+  await runVehicleSeed();
+  // future: await runCategorySeed(); await runVendorSeed();
+});
 
 describe('vehicles seed', () => {
-  beforeAll(async () => {
-    await db.execute(sql`TRUNCATE TABLE vehicles RESTART IDENTITY CASCADE`);
-    await runVehicleSeed();
-  });
-
   it('inserts at least 150 vehicle rows across the 8 platform groups', async () => {
     const rows = await db.select().from(vehicles);
     expect(rows.length).toBeGreaterThanOrEqual(150);
