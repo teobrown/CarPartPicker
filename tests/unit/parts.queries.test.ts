@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { db } from '@/lib/db/client';
 import { parts, categories, vendorListings, vendors } from '@/lib/db/schema';
 import { sql } from 'drizzle-orm';
-import { listPartsByCategory, listAllParts } from '@/lib/queries/parts';
+import { listPartsByCategory, listAllParts, getPartByBrandModel } from '@/lib/queries/parts';
 import { runCategorySeed } from '@/lib/db/seed/categories';
 import { runVendorSeed } from '@/lib/db/seed/vendors';
 
@@ -51,5 +51,12 @@ describe('parts queries', () => {
     expect(intakeRows.every((r) => r.categorySlug === 'intake')).toBe(true);
     const exhaustRows = await listPartsByCategory('catback');
     expect(exhaustRows.length).toBe(0);
+  });
+
+  it('getPartByBrandModel returns the part with all vendor listings', async () => {
+    const found = await getPartByBrandModel('cobb', 'sf-intake');
+    expect(found).toBeDefined();
+    expect(found!.brand).toBe('Cobb');
+    expect(found!.listings.length).toBeGreaterThan(0);
   });
 });
