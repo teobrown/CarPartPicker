@@ -9,6 +9,9 @@ import {
   uniqueIndex,
   index,
   bigserial,
+  bigint,
+  primaryKey,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 
 export const vehicles = pgTable(
@@ -39,7 +42,7 @@ export const categories = pgTable('categories', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 64 }).notNull(),
   slug: varchar('slug', { length: 64 }).notNull().unique(),
-  parentId: integer('parent_id'),
+  parentId: integer('parent_id').references((): AnyPgColumn => categories.id),
   description: text('description'),
 });
 
@@ -78,7 +81,7 @@ export const parts = pgTable(
     tireDiameter: integer('tire_diameter'),
     // shared
     weightLbs: integer('weight_lbs'),
-    msrpCents: integer('msrp_cents'),
+    msrpCents: bigint('msrp_cents', { mode: 'number' }),
   },
   (t) => ({
     brandModelIdx: index('parts_brand_model_idx').on(t.brand, t.model),
@@ -98,13 +101,14 @@ export const vendorListings = pgTable(
       .references(() => vendors.id),
     vendorSku: varchar('vendor_sku', { length: 64 }),
     vendorUrl: varchar('vendor_url', { length: 1024 }).notNull(),
-    priceCents: integer('price_cents'),
+    priceCents: bigint('price_cents', { mode: 'number' }),
     inStock: boolean('in_stock').default(true).notNull(),
     lastScrapedAt: timestamp('last_scraped_at', { withTimezone: true }).defaultNow().notNull(),
     missedRuns: integer('missed_runs').default(0).notNull(),
   },
   (t) => ({
     uq: uniqueIndex('vendor_listings_vendor_part_uq').on(t.vendorId, t.partId),
+    partIdx: index('vendor_listings_part_idx').on(t.partId),
   })
 );
 
@@ -159,7 +163,7 @@ export const buildItems = pgTable(
     userNote: text('user_note'),
   },
   (t) => ({
-    pk: uniqueIndex('build_items_pk').on(t.buildId, t.partId, t.position),
+    pk: primaryKey({ columns: [t.buildId, t.partId, t.position] }),
   })
 );
 
@@ -167,7 +171,7 @@ export const affiliateClicks = pgTable(
   'affiliate_clicks',
   {
     id: bigserial('id', { mode: 'number' }).primaryKey(),
-    buildId: integer('build_id'),
+    buildId: integer('build_id').references(() => builds.id, { onDelete: 'set null' }),
     listingId: integer('listing_id')
       .notNull()
       .references(() => vendorListings.id),

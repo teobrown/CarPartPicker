@@ -8,6 +8,13 @@
       "when": 1777581858489,
       "tag": "0000_green_scourge",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777582663042,
+      "tag": "0001_puzzling_polaris",
+      "breakpoints": true
     }
   ]
 }
