@@ -11,7 +11,7 @@ async function main() {
   const seeds = [
     { name: 'vehicles', run: () => import('./vehicles').then((m) => m.runVehicleSeed()) },
     { name: 'categories', run: () => import('./categories').then((m) => m.runCategorySeed()) },
-    // vendors will be added in a subsequent commit
+    { name: 'vendors', run: () => import('./vendors').then((m) => m.runVendorSeed()) },
   ];
   for (const s of seeds) {
     const n = await s.run();

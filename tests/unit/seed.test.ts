@@ -4,7 +4,7 @@ import { vehicles, categories, vendors } from '@/lib/db/schema';
 import { sql, eq } from 'drizzle-orm';
 import { runVehicleSeed } from '@/lib/db/seed/vehicles';
 import { runCategorySeed } from '@/lib/db/seed/categories';
-// future imports for runVendorSeed go here
+import { runVendorSeed } from '@/lib/db/seed/vendors';
 
 beforeAll(async () => {
   // Truncate ALL seed-owned tables in one CASCADE so FK references don't break
@@ -13,7 +13,7 @@ beforeAll(async () => {
   await db.execute(sql`TRUNCATE TABLE vehicles, categories, vendors RESTART IDENTITY CASCADE`);
   await runVehicleSeed();
   await runCategorySeed();
-  // future: await runVendorSeed();
+  await runVendorSeed();
 });
 
 describe('vehicles seed', () => {
@@ -62,5 +62,16 @@ describe('categories seed', () => {
     ]) {
       expect(slugs, `missing slug: ${expected}`).toContain(expected);
     }
+  });
+});
+
+describe('vendors seed', () => {
+  it('inserts the 6 launch vendors', async () => {
+    const rows = await db.select().from(vendors);
+    const slugs = rows.map((r) => r.slug).sort();
+    expect(slugs).toEqual([
+      'americanmuscle', 'ebay-motors', 'ecs-tuning',
+      'fcp-euro', 'rallysport-direct', 'summit-racing',
+    ]);
   });
 });
