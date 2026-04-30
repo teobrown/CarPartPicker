@@ -38,6 +38,6 @@ describe('vehicles seed', () => {
   it('preserves fractional bore values (regression test for issue caught in fix)', async () => {
     const rows = await db.select().from(vehicles).where(eq(vehicles.model, 'GR Corolla'));
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows[0].centerBoreMm).toBeCloseTo(60.1, 1);
+    for (const r of rows) expect(r.centerBoreMm).toBe(60.1);
   });
 });
