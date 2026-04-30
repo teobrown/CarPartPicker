@@ -176,12 +176,12 @@ Runs each vendor module sequentially (parallel for distinct hosts with rate limi
 
 ### Vendor priority at launch
 
-1. Summit Racing (Impact Radius affiliate, broad tuner coverage)
-2. FCP Euro (AvantLink affiliate, Euro platforms)
-3. ECS Tuning (affiliate, Euro platforms)
-4. AmericanMuscle (Mustang specialist)
-5. RallySport Direct (Subaru/WRX specialist)
-6. eBay Motors API (official API, broad fallback inventory)
+1. FCP Euro (AvantLink affiliate, Euro platforms) — **Phase 0 first vendor**
+2. ECS Tuning (affiliate, Euro platforms)
+3. AmericanMuscle (Mustang specialist)
+4. RallySport Direct (Subaru/WRX specialist)
+5. eBay Motors API (official API, broad fallback inventory)
+6. ~~Summit Racing (Impact Radius affiliate, broad tuner coverage)~~ → **DEFERRED to Phase 2**: product detail pages are blocked by Imperva Incapsula and require browser-based scraping (Playwright + stealth) which is out of Phase 0 scope.
 
 ### Schedule & legal posture
 
@@ -306,7 +306,7 @@ Click logging awaited but failure-tolerant. IP hashed for analytics, not stored 
 **Phase 0 — Foundation (weeks 1-3)**
 - DB schema + migrations.
 - `vehicles` seed (~12 chassis × ~5 years × ~3 trims ≈ 180 rows, hand-entered).
-- One scraper end-to-end (Summit Racing only).
+- One scraper end-to-end (FCP Euro; Summit Racing deferred to Phase 2 — see §4).
 - Read-only catalog page rendering scraped data.
 
 **Phase 1 — MVP (weeks 4-8)**

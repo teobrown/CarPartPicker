@@ -1369,6 +1369,16 @@ git commit -m "feat(scraper): add YAML-backed category mapper with fuzzy fallbac
 
 ## Task 9: Python — Summit Racing scraper module against fixtures
 
+> **Pivot (2026-04-30):** First vendor changed from Summit Racing to **FCP Euro** after reconnaissance found Summit's product detail pages return a 4 KB Imperva Incapsula challenge to non-browser HTTP clients (status 200 on listing pages but the per-product PDPs are firewalled). FCP Euro serves fully-rendered HTML with a JSON-LD `Product` block on every product page, no anti-bot interstitial against `CarPartPickerBot/0.1`. See spec §4 update for the revised vendor priority. The actual files shipped under this task are:
+>
+> - `scraper/src/scraper/vendors/fcp_euro.py`
+> - `scraper/tests/fixtures/fcp-euro/category_air-intake.html`
+> - `scraper/tests/fixtures/fcp-euro/product_KIT-01804.html`
+> - `scraper/tests/fixtures/fcp-euro/product_KIT-01474.html`
+> - `scraper/tests/test_fcp_euro.py`
+>
+> The Summit-specific scaffolding below is preserved for posterity / Phase 2; the FCP Euro parser uses the same `parse_category_page` / `parse_product_page` contract but is driven primarily by the JSON-LD `Product` block (with DOM fallbacks) since FCP Euro renders that on every PDP. Reconnaissance results: RallySport Direct returned 404 on probed category paths, ECS Tuning was blocked by Cloudflare (status 403, "Just a moment..."), AmericanMuscle worked but the Mustang catalog isn't a Phase 0 priority.
+
 **Files:**
 - Create: `scraper/tests/fixtures/summit/category_intake.html`
 - Create: `scraper/tests/fixtures/summit/product_cobb_sf_intake.html`
