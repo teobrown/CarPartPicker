@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { db } from '@/lib/db/client';
 import { vehicles } from '@/lib/db/schema';
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import { runVehicleSeed } from '@/lib/db/seed/vehicles';
 
 describe('vehicles seed', () => {
@@ -33,5 +33,11 @@ describe('vehicles seed', () => {
     expect(models).toContain('Mustang');
     expect(models).toContain('MX-5 Miata');
     expect(models).toContain('Golf R');
+  });
+
+  it('preserves fractional bore values (regression test for issue caught in fix)', async () => {
+    const rows = await db.select().from(vehicles).where(eq(vehicles.model, 'GR Corolla'));
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows[0].centerBoreMm).toBeCloseTo(60.1, 1);
   });
 });
