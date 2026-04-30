@@ -10,7 +10,8 @@ async function main() {
   // postgres connection pool.
   const seeds = [
     { name: 'vehicles', run: () => import('./vehicles').then((m) => m.runVehicleSeed()) },
-    // categories + vendors will be added in subsequent commits
+    { name: 'categories', run: () => import('./categories').then((m) => m.runCategorySeed()) },
+    // vendors will be added in a subsequent commit
   ];
   for (const s of seeds) {
     const n = await s.run();
