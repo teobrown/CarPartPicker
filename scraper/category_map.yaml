@@ -1,0 +1,53 @@
+intake:
+  - "Cold Air Intake Systems"
+  - "Air Intakes"
+  - "Performance Intake System"
+catback:
+  - "Cat-Back Exhaust Systems"
+  - "Catback Exhaust"
+axleback:
+  - "Axle-Back Exhaust"
+  - "Axleback Exhaust"
+muffler-delete:
+  - "Muffler Delete"
+  - "Muffler Bypass"
+tune:
+  - "Tuners"
+  - "ECU Tuning"
+  - "Programmers"
+downpipe:
+  - "Downpipes"
+  - "Down Pipes"
+intercooler:
+  - "Intercoolers"
+bov:
+  - "Blow Off Valves"
+  - "Diverter Valves"
+coilovers:
+  - "Coilover Suspension Kits"
+  - "Coilovers"
+springs:
+  - "Lowering Springs"
+sway-bars:
+  - "Sway Bars"
+  - "Anti-Roll Bars"
+wheels:
+  - "Wheels"
+  - "Custom Wheels"
+tires:
+  - "Tires"
+  - "Performance Tires"
+lip-kit:
+  - "Lip Kits"
+  - "Front Lip"
+spoiler:
+  - "Spoilers"
+  - "Wings"
+fender-flares:
+  - "Fender Flares"
+headlights:
+  - "Headlights"
+  - "Headlamps"
+taillights:
+  - "Tail Lights"
+  - "Taillights"
