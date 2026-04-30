@@ -34,7 +34,13 @@ export const vehicles = pgTable(
     maxNoRubWidthIn: numeric('max_no_rub_width_in', { precision: 4, scale: 1, mode: 'number' }),
   },
   (t) => ({
-    uq: uniqueIndex('vehicles_make_model_year_trim_uq').on(t.make, t.model, t.year, t.trim),
+    uq: uniqueIndex('vehicles_make_model_year_trim_sub_model_uq').on(
+      t.make,
+      t.model,
+      t.year,
+      t.trim,
+      t.subModel,
+    ),
     genIdx: index('vehicles_generation_idx').on(t.generation),
   })
 );

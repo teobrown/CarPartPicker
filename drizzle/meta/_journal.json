@@ -29,6 +29,13 @@
       "when": 1777584426733,
       "tag": "0003_lean_network",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777592143544,
+      "tag": "0004_skinny_satana",
+      "breakpoints": true
     }
   ]
 }

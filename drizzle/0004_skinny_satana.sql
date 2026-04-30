@@ -1,0 +1,2 @@
+DROP INDEX "vehicles_make_model_year_trim_uq";--> statement-breakpoint
+CREATE UNIQUE INDEX "vehicles_make_model_year_trim_sub_model_uq" ON "vehicles" USING btree ("make","model","year","trim","sub_model");

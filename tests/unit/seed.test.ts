@@ -17,9 +17,19 @@ beforeAll(async () => {
 });
 
 describe('vehicles seed', () => {
-  it('inserts at least 150 vehicle rows across the 8 platform groups', async () => {
+  it('inserts at least 195 vehicle rows across the 8 platform groups', async () => {
     const rows = await db.select().from(vehicles);
-    expect(rows.length).toBeGreaterThanOrEqual(150);
+    expect(rows.length).toBeGreaterThanOrEqual(195);
+  });
+
+  it('seeds the expected Mustang coverage (GT + Ecoboost across 9 years)', async () => {
+    const rows = await db.select().from(vehicles).where(eq(vehicles.model, 'Mustang'));
+    // GT (Base, Premium) × 9 years + Ecoboost (Base, Premium, High Performance) × 9 years = 45
+    expect(rows.length).toBe(45);
+    const gtCount = rows.filter((r) => r.subModel === 'GT').length;
+    const ecoCount = rows.filter((r) => r.subModel === 'Ecoboost').length;
+    expect(gtCount).toBe(18);
+    expect(ecoCount).toBe(27);
   });
 
   it('every row has a non-null generation and bolt_pattern', async () => {
