@@ -9,6 +9,8 @@ export default defineConfig({
     // both truncate seed-owned tables in their own beforeAll hooks. Running
     // them concurrently against the same Neon DB would race.
     fileParallelism: false,
+    // Playwright owns tests/e2e/ — keep vitest from picking up *.spec.ts there.
+    exclude: ['**/node_modules/**', '**/tests/e2e/**'],
   },
   resolve: {
     alias: { '@': path.resolve(__dirname, '.') },
