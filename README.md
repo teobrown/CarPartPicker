@@ -6,7 +6,7 @@ This monorepo holds the Next.js web app (root) and the Python scraper service (`
 
 ## Stack
 
-- **Web:** Next.js 15 (App Router, TypeScript, Tailwind) on Vercel
+- **Web:** Next.js 16 (App Router, TypeScript, Tailwind) on Vercel
 - **Database:** Postgres 16 — local Docker for dev, Neon for prod — accessed via Drizzle ORM
 - **Scraper:** Python 3.12 with `httpx` + `selectolax` + `psycopg`, managed by `uv`
 
