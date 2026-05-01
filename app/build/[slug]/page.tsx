@@ -1,28 +1,85 @@
 import { notFound } from 'next/navigation';
 import { getBuild } from '@/lib/queries/builds';
+import { listCategoriesWithCounts } from '@/lib/queries/parts';
+import { listCategoryPartsRankedForVehicle, type CompatStatus } from '@/lib/queries/compat';
 import { SiteHeader } from '@/app/components/site-header';
 import { SiteFooter } from '@/app/components/site-footer';
+import { BuildRow } from '@/app/components/build-row';
+import { BuildSummary } from '@/app/components/build-summary';
 
 export const dynamic = 'force-dynamic';
 
-export default async function BuildPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function BuildPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
   const build = await getBuild(slug);
   if (!build) return notFound();
+
+  const allCategories = await listCategoriesWithCounts();
+
+  // For each part in the build, compute its compat status against the build's vehicle.
+  // N queries (one per item) — acceptable for ≤50 items per build.
+  const compatByPart: Record<number, { status: CompatStatus; caveat: string | null }> = {};
+  for (const it of build.items) {
+    const ranked = await listCategoryPartsRankedForVehicle({
+      categorySlug: it.part.categorySlug,
+      vehicleId: build.vehicle.id,
+    });
+    const found = ranked.find((p) => p.id === it.part.id);
+    if (found) compatByPart[it.part.id] = { status: found.status, caveat: found.caveat };
+  }
+
+  // Bucket items by category so each row only shows the part for its slot.
+  const itemsByCategory = new Map<string, (typeof build.items)[number]>();
+  for (const it of build.items) itemsByCategory.set(it.part.categorySlug, it);
+
   return (
     <>
       <SiteHeader crumbs={[{ label: 'build', href: '/parts' }, { label: slug }]} />
       <main className="mx-auto max-w-[1400px] px-6 py-12 flex-1">
-        <p className="eyebrow-signal mb-4">[BUILD] · {slug}</p>
+        <p className="eyebrow-signal mb-3">[BUILD] · {slug}</p>
         <h1 className="display-lg">
           {build.vehicle.year} {build.vehicle.make} {build.vehicle.model}
           {build.vehicle.subModel ? ' ' + build.vehicle.subModel : ''}
+          <span className="text-signal">.</span>
         </h1>
         <p className="body-sm mt-2">
           {build.vehicle.trim ? build.vehicle.trim + ' · ' : ''}
-          {build.vehicle.generation} chassis · {build.items.length} parts in build
+          {build.vehicle.generation} chassis
         </p>
-        <p className="eyebrow mt-12 text-fg-dim">Build editor lands in Task 2.</p>
+
+        <div className="mt-10 grid grid-cols-12 gap-8">
+          <div className="col-span-12 lg:col-span-8">
+            <ul className="hairline">
+              {allCategories.map((c) => {
+                const it = itemsByCategory.get(c.slug);
+                const itemWithCompat = it
+                  ? {
+                      ...it,
+                      compatStatus: compatByPart[it.part.id]?.status ?? ('unknown' as CompatStatus),
+                      compatCaveat: compatByPart[it.part.id]?.caveat ?? null,
+                    }
+                  : null;
+                return (
+                  <BuildRow
+                    key={c.slug}
+                    buildSlug={slug}
+                    vehicleId={build.vehicle.id}
+                    categorySlug={c.slug}
+                    categoryLabel={c.name}
+                    item={itemWithCompat}
+                  />
+                );
+              })}
+            </ul>
+          </div>
+          <aside className="col-span-12 lg:col-span-4">
+            <BuildSummary build={build} />
+          </aside>
+        </div>
       </main>
       <SiteFooter />
     </>
