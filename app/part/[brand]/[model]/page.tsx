@@ -62,7 +62,7 @@ export default async function PartDetail({
               <div className="mt-10 flex flex-wrap items-center gap-4" data-reveal="4">
                 {sortedListings[0] && (
                   <a
-                    href={sortedListings[0].vendorUrl}
+                    href={`/go/${sortedListings[0].listingId}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn-primary"
@@ -135,7 +135,7 @@ export default async function PartDetail({
                   return (
                     <li key={l.listingId} className="hairline-soft-b last:border-b-0">
                       <a
-                        href={l.vendorUrl}
+                        href={`/go/${l.listingId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="row-hover py-4 px-5 grid grid-cols-12 gap-4 items-center"
