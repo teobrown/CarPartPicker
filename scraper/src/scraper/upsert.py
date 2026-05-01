@@ -68,12 +68,16 @@ def upsert_part(
 
     with conn.cursor() as cur:
         # parts: SELECT-first to avoid duplicates (no DB-level unique key on brand+model+sku).
+        # NOTE: parts.msrp_cents is intentionally left NULL by the scraper.
+        # MSRP and current vendor selling price are different things. Phase 2 will
+        # populate msrp_cents from a dedicated MSRP source if/when one is available.
+        # Current vendor selling price lives in vendor_listings.price_cents.
         part_id = _find_existing_part(conn, p.brand, p.model, sku, p.name)
         if part_id is None:
             cur.execute(
                 """
-                INSERT INTO parts (category_id, brand, model, sku, name, image_url, msrp_cents)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO parts (category_id, brand, model, sku, name, image_url)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 RETURNING id
                 """,
                 (
@@ -83,7 +87,6 @@ def upsert_part(
                     sku,
                     p.name,
                     p.image_url,
-                    p.price_cents,
                 ),
             )
             row = cur.fetchone()
@@ -96,11 +99,10 @@ def upsert_part(
                 UPDATE parts
                 SET category_id = %s,
                     name = %s,
-                    image_url = COALESCE(%s, image_url),
-                    msrp_cents = COALESCE(%s, msrp_cents)
+                    image_url = COALESCE(%s, image_url)
                 WHERE id = %s
                 """,
-                (category_id, p.name, p.image_url, p.price_cents, part_id),
+                (category_id, p.name, p.image_url, part_id),
             )
 
         # vendor_listings: unique on (vendor_id, part_id), so ON CONFLICT works.
