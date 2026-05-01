@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/client';
-import { parts, categories, vendorListings, vendors } from '@/lib/db/schema';
-import { sql, eq, min } from 'drizzle-orm';
+import { parts, categories, vendorListings, vendors, vehicles } from '@/lib/db/schema';
+import { sql, eq, min, count, countDistinct } from 'drizzle-orm';
 
 export type PartListRow = {
   id: number;
@@ -99,4 +99,77 @@ export async function getPartByBrandModel(
     vendorCount: listings.length,
     listings,
   };
+}
+
+export type CatalogStats = {
+  vehicleCount: number;
+  partCount: number;
+  listingCount: number;
+  vendorCount: number;
+  categoryCount: number;
+  platformGroups: number;
+};
+
+export async function getCatalogStats(): Promise<CatalogStats> {
+  const [v] = await db.select({ n: count() }).from(vehicles);
+  const [p] = await db.select({ n: count() }).from(parts);
+  const [l] = await db.select({ n: count() }).from(vendorListings);
+  const [vd] = await db.select({ n: count() }).from(vendors);
+  const [c] = await db.select({ n: count() }).from(categories);
+  const [pg] = await db
+    .select({ n: countDistinct(vehicles.model) })
+    .from(vehicles);
+  return {
+    vehicleCount: v.n,
+    partCount: p.n,
+    listingCount: l.n,
+    vendorCount: vd.n,
+    categoryCount: c.n,
+    platformGroups: pg.n,
+  };
+}
+
+export type PlatformSummary = {
+  make: string;
+  model: string;
+  generation: string;
+  yearStart: number;
+  yearEnd: number;
+  rowCount: number;
+};
+
+export async function listPlatforms(): Promise<PlatformSummary[]> {
+  const rows = await db
+    .select({
+      make: vehicles.make,
+      model: vehicles.model,
+      generation: vehicles.generation,
+      yearStart: sql<number>`min(${vehicles.year})::int`,
+      yearEnd: sql<number>`max(${vehicles.year})::int`,
+      rowCount: sql<number>`count(*)::int`,
+    })
+    .from(vehicles)
+    .groupBy(vehicles.make, vehicles.model, vehicles.generation)
+    .orderBy(vehicles.make, vehicles.model, vehicles.generation);
+  return rows;
+}
+
+export type CategorySummary = {
+  slug: string;
+  name: string;
+  partCount: number;
+};
+
+export async function listCategoriesWithCounts(): Promise<CategorySummary[]> {
+  const rows = await db
+    .select({
+      slug: categories.slug,
+      name: categories.name,
+      partCount: sql<number>`count(${parts.id})::int`,
+    })
+    .from(categories)
+    .leftJoin(parts, eq(parts.categoryId, categories.id))
+    .groupBy(categories.id, categories.slug, categories.name)
+    .orderBy(categories.id);
+  return rows;
 }
