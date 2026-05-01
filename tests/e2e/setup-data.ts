@@ -3,6 +3,14 @@
 import { config } from 'dotenv';
 config({ path: '.env.local' });
 
+// For e2e, prefer TEST_DATABASE_URL when explicitly set (CI scenario).
+// In local dev, the running `next dev` server uses whatever DATABASE_URL it
+// was started with — set both manually if you want them to point at the same DB.
+const testUrl = process.env.TEST_DATABASE_URL;
+if (testUrl) {
+  process.env.DATABASE_URL = testUrl;
+}
+
 import { db } from '@/lib/db/client';
 import { parts, categories, vendors, vendorListings } from '@/lib/db/schema';
 import { sql, eq } from 'drizzle-orm';

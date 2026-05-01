@@ -27,10 +27,15 @@ npm install
 
 # 2. Configure DATABASE_URL
 cp .env.example .env.local
-# Edit .env.local — replace the local Docker default with your Neon URL.
+# Edit .env.local — replace the placeholder with your Neon URL.
 # Free Neon project: https://console.neon.tech
 # .env.local example:
 #   DATABASE_URL=postgresql://owner:password@ep-xxx.aws.neon.tech/neondb?sslmode=require
+#
+# Also set TEST_DATABASE_URL to a SEPARATE database — tests truncate tables, so
+# they must not run against your dev or prod DB. Easiest: create a second free
+# Neon project (https://console.neon.tech) and use its URL. The DBs can be
+# empty — migrations will set up the schema on first test run.
 
 # 3. Apply migrations
 npm run db:migrate
