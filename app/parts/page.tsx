@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   listAllParts,
@@ -9,6 +10,23 @@ import { SiteFooter } from "@/app/components/site-footer";
 import { partSlug, formatPrice } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const stats = await getCatalogStats();
+  const description =
+    stats.partCount === 0
+      ? "Browse the CarPartPicker parts registry. Catalog grows as scrapers run."
+      : `${stats.partCount} parts indexed across ${stats.vendorCount} vendors. Filter by category or browse the full registry.`;
+  return {
+    title: "Catalog",
+    description,
+    openGraph: {
+      title: "Catalog · CarPartPicker",
+      description,
+      type: "website",
+    },
+  };
+}
 
 export default async function PartsCatalog() {
   const [rows, categories, stats] = await Promise.all([

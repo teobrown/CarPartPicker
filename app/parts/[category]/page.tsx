@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -9,6 +10,31 @@ import { SiteFooter } from "@/app/components/site-footer";
 import { partSlug, formatPrice } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ category: string }>;
+}): Promise<Metadata> {
+  const { category } = await params;
+  const categories = await listCategoriesWithCounts();
+  const known = categories.find((c) => c.slug === category);
+  if (!known) {
+    return { title: "Not found" };
+  }
+  const description = `${known.partCount} ${known.name.toLowerCase()} part${
+    known.partCount === 1 ? "" : "s"
+  } indexed in the CarPartPicker registry.`;
+  return {
+    title: known.name,
+    description,
+    openGraph: {
+      title: `${known.name} · CarPartPicker`,
+      description,
+      type: "website",
+    },
+  };
+}
 
 export default async function CategoryPage({
   params,

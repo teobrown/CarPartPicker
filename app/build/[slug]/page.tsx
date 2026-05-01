@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getBuild } from '@/lib/queries/builds';
 import { listCategoriesWithCounts } from '@/lib/queries/parts';
@@ -8,6 +9,27 @@ import { BuildRow } from '@/app/components/build-row';
 import { BuildSummary } from '@/app/components/build-summary';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const build = await getBuild(slug);
+  if (!build) {
+    return {
+      title: 'Build not found',
+      robots: { index: false, follow: false },
+    };
+  }
+  const title = `${build.vehicle.year} ${build.vehicle.make} ${build.vehicle.model} build`;
+  return {
+    title,
+    description: `Anonymous build for a ${build.vehicle.year} ${build.vehicle.make} ${build.vehicle.model} — ${build.items.length} part${build.items.length === 1 ? '' : 's'} selected.`,
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function BuildPage({
   params,

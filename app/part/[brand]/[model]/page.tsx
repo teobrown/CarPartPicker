@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPartByBrandModel } from "@/lib/queries/parts";
@@ -6,6 +7,34 @@ import { SiteFooter } from "@/app/components/site-footer";
 import { formatPrice } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ brand: string; model: string }>;
+}): Promise<Metadata> {
+  const { brand, model } = await params;
+  const p = await getPartByBrandModel(brand, model);
+  if (!p) {
+    return { title: "Part not found" };
+  }
+  const title = `${p.brand} ${p.model}`;
+  const description =
+    p.description ??
+    p.name ??
+    `${p.brand} ${p.model} — ${p.vendorCount} vendor${
+      p.vendorCount === 1 ? "" : "s"
+    }, cheapest ${formatPrice(p.cheapestPriceCents)}.`;
+  return {
+    title,
+    description,
+    openGraph: {
+      title: `${title} · CarPartPicker`,
+      description,
+      type: "website",
+    },
+  };
+}
 
 export default async function PartDetail({
   params,

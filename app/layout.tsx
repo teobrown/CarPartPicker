@@ -16,9 +16,28 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CarPartPicker — Pit Wall",
+  title: {
+    default: "CarPartPicker — Pit Wall",
+    template: "%s · CarPartPicker",
+  },
   description:
     "PCPartPicker for tuner cars. Compatibility-checked mod builds with affiliate buy-through.",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  ),
+  openGraph: {
+    title: "CarPartPicker — Pit Wall",
+    description:
+      "PCPartPicker for tuner cars. Compatibility-checked mod builds with affiliate buy-through.",
+    type: "website",
+    siteName: "CarPartPicker",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CarPartPicker — Pit Wall",
+    description:
+      "PCPartPicker for tuner cars. Compatibility-checked mod builds with affiliate buy-through.",
+  },
 };
 
 export default function RootLayout({
