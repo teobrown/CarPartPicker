@@ -7,13 +7,17 @@ test.beforeAll(async () => {
 
 test('catalog index lists at least one seeded part', async ({ page }) => {
   await page.goto('/parts');
-  await expect(page.locator('h1')).toHaveText('Parts Catalog');
-  const items = page.locator('main ul li');
-  await expect(items.first()).toBeVisible();
+  // page header reads "Catalog" (with a signal-color period appended)
+  await expect(page.locator('main h1')).toContainText('Catalog');
+  // each part is rendered as a row link to /part/<brand>/<model>
+  const partLinks = page.locator('main a[href^="/part/"]');
+  await expect(partLinks.first()).toBeVisible();
 });
 
-test('part detail page shows the vendor block', async ({ page }) => {
+test('part detail page shows the vendor matrix', async ({ page }) => {
   await page.goto('/parts');
-  await page.locator('main ul li a').first().click();
-  await expect(page.locator('h2')).toHaveText('Vendors');
+  // click the first row link in the catalog
+  await page.locator('main a[href^="/part/"]').first().click();
+  // the part detail page has a "[VEN] · Vendor matrix" eyebrow + heading
+  await expect(page.locator('main')).toContainText('Vendor matrix');
 });
