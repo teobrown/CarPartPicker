@@ -1,14 +1,19 @@
 import Link from "next/link";
+import { VehicleIndicator, getSelectedVehicle } from "@/app/components/vehicle-context";
 
 type Crumb = { label: string; href?: string };
 
-export function SiteHeader({
+export async function SiteHeader({
   crumbs = [],
   liveCount,
 }: {
   crumbs?: Crumb[];
   liveCount?: { label: string; value: number | string }[];
 }) {
+  const selectedVehicle = await getSelectedVehicle();
+  const tickers = liveCount ?? [];
+  const showSeparator = tickers.length > 0 && selectedVehicle !== null;
+
   return (
     <header className="hairline-b">
       {/* telemetry strip */}
@@ -23,12 +28,14 @@ export function SiteHeader({
             <span className="hidden sm:inline">UTC <Clock /></span>
           </div>
           <div className="hidden md:flex items-center gap-3">
-            {(liveCount ?? []).map((s, i) => (
+            {tickers.map((s, i) => (
               <span key={i}>
                 <span className="text-fg-dim">{s.label} </span>
                 <span className="text-fg tabular">{s.value}</span>
               </span>
             ))}
+            {showSeparator && <span aria-hidden className="text-line">|</span>}
+            <VehicleIndicator />
           </div>
         </div>
       </div>

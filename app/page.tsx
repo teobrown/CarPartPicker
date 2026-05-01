@@ -8,6 +8,7 @@ import {
 } from "@/lib/queries/parts";
 import { SiteHeader } from "@/app/components/site-header";
 import { SiteFooter } from "@/app/components/site-footer";
+import { VehiclePicker } from "@/app/components/vehicle-picker";
 
 export const dynamic = "force-dynamic";
 
@@ -84,13 +85,14 @@ export default async function Home() {
                 we keep the kickback so the catalog stays free.
               </p>
 
-              <div className="mt-10 flex flex-wrap items-center gap-4" data-reveal="3">
-                <Link href="/parts" className="btn-primary">
-                  ENTER CATALOG <span aria-hidden>→</span>
-                </Link>
-                <Link href="#platforms" className="arrow-link">
-                  Supported platforms
-                </Link>
+              <div className="mt-10" data-reveal="3">
+                <div id="picker" />
+                <VehiclePicker />
+                <div className="mt-4">
+                  <Link href="#platforms" className="arrow-link">
+                    Supported platforms
+                  </Link>
+                </div>
               </div>
 
               {/* mini ticker */}
