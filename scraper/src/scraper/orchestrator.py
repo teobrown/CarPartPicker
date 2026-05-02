@@ -7,7 +7,7 @@ import httpx
 from scraper.db import connect
 from scraper.upsert import upsert_part
 from scraper.fitment_parser import parse_fitment
-from scraper.llm_fitment import parse_fitment_with_llm
+from scraper.llm_fitment import parse_fitment_with_llm, extract_fitment_from_html
 from scraper.category_map import map_category
 from scraper.normalized import NormalizedPart
 from scraper.vendors import fcp_euro, americanmuscle, rallysport_direct
@@ -55,6 +55,15 @@ def _process_and_upsert(
                     parsed = parse_fitment_with_llm(p.fitment_text)
                 except Exception as e:
                     log.warning("llm fitment fallback failed: %s", e)
+                    parsed = []
+            if not parsed and p.raw_html:
+                # third-tier fallback: feed the raw page to the LLM. Useful
+                # when fitment_text is too thin (e.g. "Make sure this fits
+                # your car") to extract anything from.
+                try:
+                    parsed = extract_fitment_from_html(p.raw_html)
+                except Exception as e:
+                    log.warning("llm html extraction failed: %s", e)
                     parsed = []
             try:
                 upsert_part(conn, p, parsed_fitment=parsed, category_slug=slug)

@@ -70,9 +70,25 @@ Rules:
 
 Return strict JSON with no surrounding prose."""
 
+HTML_SYSTEM_PROMPT = """You are a parser that extracts automotive fitment data from product page HTML text content (no markup — pre-stripped to plain text).
 
-def _cache_path(text: str) -> Path:
-    h = hashlib.sha256(text.encode("utf-8")).hexdigest()[:32]
+Find every mention of a specific car make + model + year range and emit a fitment rule. Skip generic categories ("vehicles", "cars"). Skip cars NOT in this exact list: WRX, WRX STI, BRZ, GR Corolla, GR86, Civic Si, Civic Type R, Mustang, MX-5 Miata, Golf R, GTI.
+
+Each rule has:
+- "make": Subaru, Honda, Ford, Toyota, Mazda, Volkswagen — required
+- "model": one of the supported model names above — required
+- "generation": chassis code if mentioned (VA, VB, FK8, FL5, S550, Mk7, Mk8, ZN8, ZD8, ND) or null
+- "year_start": int or null
+- "year_end": int or null
+- "trims_included": list of trims (e.g. ["Premium", "Limited"]) or null
+- "status": "fits" if explicit ("fits", "compatible", "designed for"), "fits_with_caveat" if requires modification, "unknown" if ambiguous
+- "caveat": short string or null
+
+Return strict JSON: {"rules": [...]}. No surrounding prose."""
+
+
+def _cache_path(text: str, *, model: str) -> Path:
+    h = hashlib.sha256(f"{model}|{text}".encode("utf-8")).hexdigest()[:32]
     return CACHE_DIR / f"{h}.json"
 
 
@@ -121,9 +137,13 @@ def parse_fitment_with_llm(text: str) -> list[ParsedFitment]:
     if not text or not text.strip():
         return []
 
+    model = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-pro")
+
     # Read the cache before importing/instantiating the client so cached
-    # hits don't spend tokens or require an API key.
-    cp = _cache_path(text)
+    # hits don't spend tokens or require an API key. Cache key includes the
+    # model name so switching models invalidates cleanly without cross-model
+    # contamination.
+    cp = _cache_path(text, model=model)
     if cp.exists():
         try:
             cached = json.loads(cp.read_text(encoding="utf-8"))
@@ -138,7 +158,6 @@ def parse_fitment_with_llm(text: str) -> list[ParsedFitment]:
         # don't get the LLM tier of fallback.
         return []
 
-    model = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
     client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
     completion = client.chat.completions.create(
@@ -196,6 +215,125 @@ def parse_fitment_with_llm(text: str) -> list[ParsedFitment]:
     except OSError:
         # Cache writes are best-effort — don't fail the call if the
         # cache dir is unwritable.
+        pass
+
+    return out
+
+
+def _strip_html_noise(html: str) -> str:
+    """Strip script/style/nav/footer/aside/noscript blocks and return
+    plain-text content with whitespace collapsed. Used to feed the LLM
+    a clean view of a product page when the structured parser came up empty.
+    """
+    from selectolax.parser import HTMLParser
+
+    tree = HTMLParser(html)
+    for sel in ("script", "style", "nav", "footer", "aside", "noscript"):
+        for n in tree.css(sel):
+            n.decompose()
+    text = tree.text(separator=" ", strip=True)
+    # Collapse runs of whitespace
+    return " ".join(text.split())
+
+
+def _parse_rules_payload(raw: str) -> list[ParsedFitment]:
+    """Shared response-decoding step used by both the prose and HTML extractors."""
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    rules_raw = data.get("rules", []) or []
+
+    out: list[ParsedFitment] = []
+    for r in rules_raw:
+        if not isinstance(r, dict):
+            continue
+        make = _str_or_none(r.get("make"))
+        model_name = _str_or_none(r.get("model"))
+        if not make or not model_name:
+            continue
+        if not _is_supported_platform(make, model_name):
+            continue
+        status_raw = r.get("status")
+        status = (
+            status_raw
+            if status_raw in ("fits", "fits_with_caveat", "unknown")
+            else "unknown"
+        )
+        out.append(
+            ParsedFitment(
+                make=make,
+                model=model_name,
+                year_start=_int_or_none(r.get("year_start")),
+                year_end=_int_or_none(r.get("year_end")),
+                trims_included=_list_or_none(r.get("trims_included")),
+                status=status,
+                caveat=_str_or_none(r.get("caveat")),
+            )
+        )
+    return out
+
+
+def extract_fitment_from_html(
+    html: str, *, max_html_chars: int = 8000
+) -> list[ParsedFitment]:
+    """Aid scraping by extracting fitment rules from raw product-page HTML
+    when the structured parser couldn't find clean fitment text.
+
+    Strips ``<script>``/``<style>``/``<nav>``/``<footer>``/``<aside>``/
+    ``<noscript>`` blocks before sending so the model sees readable content.
+    Caches by hash of the trimmed (stripped + truncated) HTML keyed on the
+    same model used by ``parse_fitment_with_llm``.
+
+    Returns the same ``ParsedFitment`` shape as ``parse_fitment_with_llm``.
+    Fails open to ``[]`` on empty input, missing API key, or JSON decode error.
+    """
+    if not html or not html.strip():
+        return []
+    cleaned = _strip_html_noise(html)[:max_html_chars]
+    if not cleaned.strip():
+        return []
+
+    model = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-pro")
+
+    # Cache key: prefix with "html|" so HTML-extraction outputs don't
+    # collide with prose extraction even when the trimmed text happens
+    # to match a prose input verbatim.
+    cp = _cache_path(f"html|{cleaned}", model=model)
+    if cp.exists():
+        try:
+            cached = json.loads(cp.read_text(encoding="utf-8"))
+            return [ParsedFitment(**row) for row in cached]
+        except (json.JSONDecodeError, TypeError, OSError):
+            pass
+
+    api_key = os.environ.get("DEEPSEEK_API_KEY")
+    if not api_key:
+        return []
+
+    client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+
+    completion = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": HTML_SYSTEM_PROMPT},
+            {"role": "user", "content": cleaned},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.1,
+        max_tokens=800,
+    )
+
+    raw = completion.choices[0].message.content or "{}"
+    out = _parse_rules_payload(raw)
+
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cp.write_text(
+            json.dumps([_dataclass_to_dict(r) for r in out]),
+            encoding="utf-8",
+        )
+    except OSError:
         pass
 
     return out

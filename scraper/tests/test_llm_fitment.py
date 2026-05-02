@@ -2,7 +2,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from scraper.llm_fitment import parse_fitment_with_llm
+from scraper.llm_fitment import (
+    extract_fitment_from_html,
+    parse_fitment_with_llm,
+)
 
 
 def test_parse_fitment_with_llm_returns_empty_when_no_api_key(
@@ -51,3 +54,28 @@ def test_parse_fitment_with_llm_filters_unsupported_platforms(
     assert out[0].year_start == 2015
     assert out[0].year_end == 2021
     assert out[0].status == "fits"
+
+
+def test_extract_fitment_from_html_strips_noise_and_caches(monkeypatch, tmp_path):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test")
+    monkeypatch.setattr("scraper.llm_fitment.CACHE_DIR", tmp_path)
+    fake_resp = MagicMock()
+    fake_resp.choices = [MagicMock()]
+    fake_resp.choices[0].message.content = (
+        '{"rules":[{"make":"Subaru","model":"WRX","year_start":2015,'
+        '"year_end":2021,"status":"fits"}]}'
+    )
+    with patch("scraper.llm_fitment.OpenAI") as fake_oai:
+        fake_oai.return_value.chat.completions.create.return_value = fake_resp
+        out1 = extract_fitment_from_html(
+            "<script>junk</script><p>Fits 2015-2021 Subaru WRX</p>"
+        )
+    assert len(out1) == 1
+    assert out1[0].model == "WRX"
+    # second call should hit cache, not the API
+    with patch("scraper.llm_fitment.OpenAI") as fake_oai2:
+        out2 = extract_fitment_from_html(
+            "<script>junk</script><p>Fits 2015-2021 Subaru WRX</p>"
+        )
+    assert len(out2) == 1
+    assert fake_oai2.return_value.chat.completions.create.call_count == 0

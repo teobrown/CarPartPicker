@@ -1,7 +1,7 @@
 from __future__ import annotations
 import re
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class WheelSpecs(BaseModel):
@@ -39,3 +39,7 @@ class NormalizedPart(BaseModel):
     fitment_text: str = ""
     wheel_specs: Optional[WheelSpecs] = None
     tire_specs: Optional[TireSpecs] = None
+    # In-memory only — used as a third-tier fallback for the LLM HTML
+    # extractor when vendor parsers come up empty on fitment_text. Excluded
+    # from model_dump() so it never reaches logs / DB upserts.
+    raw_html: Optional[str] = Field(default=None, exclude=True)

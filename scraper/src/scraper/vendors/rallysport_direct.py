@@ -246,6 +246,7 @@ def parse_product_page(html: str, *, url: str) -> Optional[NormalizedPart]:
         price_cents=price_cents,
         in_stock=in_stock,
         fitment_text=fitment_text,
+        raw_html=html,
     )
 
 
