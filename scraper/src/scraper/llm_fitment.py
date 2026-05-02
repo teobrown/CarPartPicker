@@ -137,7 +137,11 @@ def parse_fitment_with_llm(text: str) -> list[ParsedFitment]:
     if not text or not text.strip():
         return []
 
-    model = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-pro")
+    # Two-tier strategy: v4-flash handles the simple, well-formed prose cases
+    # (95%+ of vendor descriptions). DEEPSEEK_MODEL env var overrides for the
+    # rare cases where v4-pro reasoning is genuinely needed (HTML extraction
+    # below uses v4-pro by default since that path is harder).
+    model = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
 
     # Read the cache before importing/instantiating the client so cached
     # hits don't spend tokens or require an API key. Cache key includes the

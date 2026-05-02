@@ -69,8 +69,12 @@ export async function getPartByBrandModel(
     })
     .from(parts)
     .innerJoin(categories, eq(categories.id, parts.categoryId))
-    .where(sql`lower(replace(${parts.brand}, ' ', '-')) = ${brandSlug}
-            AND lower(replace(${parts.model}, ' ', '-')) = ${modelSlug}`)
+    // Match the SQL-side slugify to lib/format.ts#partSlug exactly:
+    //   lowercase → collapse runs of any non-alphanumeric char to '-' → trim '-' from ends.
+    // Without this regex pair, brands like "K&N" and models containing parens / slashes
+    // produced UI slugs that wouldn't match the SQL `replace(_, ' ', '-')` shortcut → 404.
+    .where(sql`trim(BOTH '-' FROM regexp_replace(lower(${parts.brand}), '[^a-z0-9]+', '-', 'g')) = ${brandSlug}
+           AND trim(BOTH '-' FROM regexp_replace(lower(${parts.model}), '[^a-z0-9]+', '-', 'g')) = ${modelSlug}`)
     .limit(1);
   if (rows.length === 0) return null;
   const p = rows[0];
