@@ -26,6 +26,7 @@ export async function GET(
       vendorUrl: vendorListings.vendorUrl,
       affiliateParam: vendors.affiliateParam,
       affiliateValue: vendors.affiliateValue,
+      vendorBaseUrl: vendors.baseUrl,
     })
     .from(vendorListings)
     .innerJoin(vendors, eq(vendors.id, vendorListings.vendorId))
@@ -40,6 +41,27 @@ export async function GET(
   } catch {
     return Response.json({ error: 'invalid vendor url' }, { status: 500 });
   }
+
+  // Reject open-redirect: the vendorUrl must point at the vendor's own host.
+  // Subdomains of the vendor base are allowed (e.g. cdn.vendor.com).
+  let baseHost: string;
+  try {
+    baseHost = new URL(row.vendorBaseUrl).hostname;
+  } catch {
+    return Response.json({ error: 'invalid vendor base url' }, { status: 500 });
+  }
+  if (target.hostname !== baseHost && !target.hostname.endsWith('.' + baseHost)) {
+    console.warn('[/go] hostname mismatch — refusing redirect', {
+      listingId: id,
+      target: target.hostname,
+      expected: baseHost,
+    });
+    return Response.json(
+      { error: 'destination does not match vendor' },
+      { status: 400 },
+    );
+  }
+
   if (row.affiliateParam && row.affiliateValue) {
     target.searchParams.set(row.affiliateParam, row.affiliateValue);
   }

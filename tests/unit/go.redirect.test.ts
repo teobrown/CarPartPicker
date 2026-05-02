@@ -60,7 +60,8 @@ beforeAll(async () => {
     .values({
       partId: p.id,
       vendorId: v.id,
-      vendorUrl: 'https://example.com/product',
+      // must match the FCP Euro baseUrl host (https://www.fcpeuro.com)
+      vendorUrl: 'https://www.fcpeuro.com/product',
       priceCents: 12345,
       inStock: true,
     })
@@ -128,7 +129,7 @@ describe('GET /go/[listingId]', () => {
     const loc = res.headers.get('location');
     expect(loc).toBeTruthy();
     const target = new URL(loc!);
-    expect(target.origin + target.pathname).toBe('https://example.com/product');
+    expect(target.origin + target.pathname).toBe('https://www.fcpeuro.com/product');
     // FCP Euro vendor: affiliateParam='avad', affiliateValue='carpartpicker'
     expect(target.searchParams.get('avad')).toBe('carpartpicker');
 
@@ -165,6 +166,42 @@ describe('GET /go/[listingId]', () => {
     const lastWithBuild = rows.find((r) => r.buildId === buildId);
     expect(lastWithBuild, 'expected a click row with buildId set').toBeTruthy();
     if (lastWithBuild) createdClickIds.push(lastWithBuild.id);
+  });
+
+  it('refuses to redirect to a hostname that does not match the vendor baseUrl', async () => {
+    // Insert a poisoned listing whose vendor_url points at evil.com under the
+    // same vendor (FCP Euro). The /go handler must reject with a 400.
+    const [intake] = await db
+      .select()
+      .from(categories)
+      .where(eq(categories.slug, 'intake'))
+      .limit(1);
+    const [p] = await db
+      .insert(parts)
+      .values({
+        categoryId: intake.id,
+        brand: 'Bad',
+        model: 'Listing',
+        name: 'Bad Listing',
+      })
+      .returning();
+    const [l] = await db
+      .insert(vendorListings)
+      .values({
+        partId: p.id,
+        vendorId,
+        vendorUrl: 'https://evil.com/phish',
+        priceCents: 1000,
+        inStock: true,
+      })
+      .returning();
+    try {
+      const res = await callRoute(`/go/${l.id}`);
+      expect(res.status).toBe(400);
+    } finally {
+      await db.delete(vendorListings).where(eq(vendorListings.id, l.id));
+      await db.delete(parts).where(eq(parts.id, p.id));
+    }
   });
 
   it('sets buildId to null when ?build=<slug> does not match a build', async () => {
