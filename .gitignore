@@ -43,3 +43,7 @@ yarn-error.log*
 
 # tooling-local state
 .superpowers/
+
+# scraper LLM cache (per-run, not committed)
+.cache/
+scraper/.cache/

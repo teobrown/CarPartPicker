@@ -7,6 +7,7 @@ import httpx
 from scraper.db import connect
 from scraper.upsert import upsert_part
 from scraper.fitment_parser import parse_fitment
+from scraper.llm_fitment import parse_fitment_with_llm
 from scraper.category_map import map_category
 from scraper.normalized import NormalizedPart
 from scraper.vendors import fcp_euro, americanmuscle, rallysport_direct
@@ -47,6 +48,14 @@ def _process_and_upsert(
                 )
                 continue
             parsed = parse_fitment(p.fitment_text)
+            if not parsed and p.fitment_text:
+                # regex didn't latch — try the LLM (DeepSeek). Fails open
+                # to [] so a transient API blip never blocks an upsert.
+                try:
+                    parsed = parse_fitment_with_llm(p.fitment_text)
+                except Exception as e:
+                    log.warning("llm fitment fallback failed: %s", e)
+                    parsed = []
             try:
                 upsert_part(conn, p, parsed_fitment=parsed, category_slug=slug)
                 n += 1
