@@ -11,10 +11,12 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: 'vehicleId must be numeric' }, { status: 400 });
   }
   const search = sp.get('q') ?? undefined;
+  const hideIncompatible = sp.get('hideIncompatible') === 'true';
   const parts = await listCategoryPartsRankedForVehicle({
     categorySlug: category,
     vehicleId,
     search,
+    hideIncompatible,
   });
   return Response.json({ parts });
 }

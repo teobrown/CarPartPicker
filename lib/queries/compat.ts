@@ -54,13 +54,26 @@ function partLooksRelevantToMake(partName: string, partBrand: string, vehicleMak
   return synonyms.some((s) => haystack.includes(s));
 }
 
-/** Rank parts in a category by compatibility for a given vehicle. If vehicleId is null, everything is "unknown". */
+/**
+ * Rank parts in a category by compatibility for a given vehicle. If vehicleId is null,
+ * everything is "unknown".
+ *
+ * `hideIncompatible: true` drops parts that look clearly wrong for the selected
+ * vehicle (different make, no name overlap). The build-editor part picker uses this:
+ * users only want to see parts that could plausibly fit. Catalog browse pages don't
+ * pass it, so they keep showing incompatibles grayed-out — those pages exist for
+ * "what does this part fit" exploration, not buying.
+ *
+ * `hideIncompatible` is a no-op when vehicleId is null (no vehicle = no signal to
+ * filter on).
+ */
 export async function listCategoryPartsRankedForVehicle(opts: {
   categorySlug: string;
   vehicleId: number | null;
   search?: string;
+  hideIncompatible?: boolean;
 }): Promise<RankedPartRow[]> {
-  const { categorySlug, vehicleId, search } = opts;
+  const { categorySlug, vehicleId, search, hideIncompatible = false } = opts;
 
   // Step 1: fetch all parts in the category with cheapest price + vendor count
   const baseRows = await db
@@ -140,7 +153,7 @@ export async function listCategoryPartsRankedForVehicle(opts: {
     }
   }
 
-  return baseRows
+  const ranked = baseRows
     .map((r) => {
       const rule = byPart[r.id];
       if (rule) return { ...r, status: rule.status, caveat: rule.caveat };
@@ -155,4 +168,9 @@ export async function listCategoryPartsRankedForVehicle(opts: {
       };
     })
     .sort((a, b) => STATUS_PRIORITY[b.status] - STATUS_PRIORITY[a.status]);
+
+  if (hideIncompatible) {
+    return ranked.filter((r) => r.status !== 'incompatible');
+  }
+  return ranked;
 }

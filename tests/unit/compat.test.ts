@@ -245,4 +245,27 @@ describe('listCategoryPartsRankedForVehicle make-name heuristic', () => {
     expect(wrx!.status).toBe('incompatible');
     expect(wrx!.caveat).toBe('No fitment match for Volkswagen');
   });
+
+  it('hideIncompatible filters out parts demoted to incompatible by the heuristic', async () => {
+    const rows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'intake',
+      vehicleId: vwVehicleId,
+      hideIncompatible: true,
+    });
+    const ids = rows.map((r) => r.id);
+    expect(ids).toContain(vwGolfPartId);
+    expect(ids).not.toContain(subaruWrxPartId);
+    for (const r of rows) expect(r.status).not.toBe('incompatible');
+  });
+
+  it('hideIncompatible is a no-op when vehicleId is null (no signal to filter on)', async () => {
+    const rows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'intake',
+      vehicleId: null,
+      hideIncompatible: true,
+    });
+    // both parts return; everything is "unknown" without a vehicle context
+    expect(rows.length).toBe(2);
+    for (const r of rows) expect(r.status).toBe('unknown');
+  });
 });

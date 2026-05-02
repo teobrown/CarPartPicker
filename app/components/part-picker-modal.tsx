@@ -32,11 +32,15 @@ export function PartPickerModal(p: PartPickerProps) {
   const [isPending, startTransition] = useTransition();
 
   // Fetch ranked parts whenever the modal opens or the search/category/vehicle changes.
+  // hideIncompatible=true: only parts that could plausibly fit this vehicle. Parts
+  // demoted to "incompatible" by the make-name heuristic (or by an explicit fitment
+  // rule) are filtered out server-side. Catalog browse pages don't pass this flag.
   useEffect(() => {
     if (!p.open) return;
     const u = new URL('/api/parts/search', window.location.origin);
     u.searchParams.set('category', p.categorySlug);
     u.searchParams.set('vehicleId', String(p.vehicleId));
+    u.searchParams.set('hideIncompatible', 'true');
     if (q) u.searchParams.set('q', q);
     let cancelled = false;
     void fetch(u.toString())
@@ -130,7 +134,15 @@ export function PartPickerModal(p: PartPickerProps) {
             </li>
           ))}
           {rows.length === 0 && (
-            <li className="px-5 py-12 text-center body-sm">No parts in this category yet.</li>
+            <li className="px-5 py-12 text-center">
+              <p className="eyebrow text-[10px] mb-3">[NO MATCHES]</p>
+              <p className="display-md text-base mb-2">Nothing here fits your vehicle yet.</p>
+              <p className="body-sm max-w-sm mx-auto">
+                {q
+                  ? "No parts match your search for this category and vehicle. Try a different search term, or browse the full catalog."
+                  : "No parts in this category have been indexed for this vehicle yet. Catalog grows as we add more vendors — Phase 2 brings Honda, Toyota, and more."}
+              </p>
+            </li>
           )}
         </ul>
       </div>
