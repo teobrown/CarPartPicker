@@ -40,7 +40,7 @@ export function BuildRow({
           <>
             <Link
               href={`/part/${partSlug(item.part.brand)}/${partSlug(item.part.model)}`}
-              className="col-span-5 min-w-0 block"
+              className="col-span-4 min-w-0 block"
             >
               <span className="block text-[10px] tracking-[0.14em] uppercase font-[family-name:var(--font-mono)] text-fg-dim">
                 {item.part.brand}
@@ -56,6 +56,18 @@ export function BuildRow({
             </span>
             <span className="col-span-2 figure text-right text-fg">
               {formatPrice(item.part.cheapestPriceCents)}
+            </span>
+            <span className="col-span-1 text-right">
+              {item.part.cheapestListingId !== null ? (
+                <a
+                  href={`/go/${item.part.cheapestListingId}?build=${buildSlug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-ghost py-1.5 px-3 text-[10px]"
+                >
+                  BUY
+                </a>
+              ) : null}
             </span>
             <span className="col-span-1 text-right">
               <button

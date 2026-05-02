@@ -6,6 +6,10 @@ export function BuildSummary({ build }: { build: BuildDetail }) {
     (acc, it) => acc + (it.part.cheapestPriceCents ?? 0),
     0,
   );
+  const hasItems = build.items.length > 0;
+  const validListings = build.items.filter(
+    (it) => it.part.cheapestListingId !== null,
+  ).length;
 
   return (
     <div className="hairline bg-bg-deep">
@@ -23,6 +27,17 @@ export function BuildSummary({ build }: { build: BuildDetail }) {
         <span className="eyebrow">Total</span>
         <span className="figure text-3xl text-signal">{formatPrice(total)}</span>
       </div>
+      {hasItems && (
+        <div className="hairline-t px-5 py-4">
+          <p className="eyebrow text-[10px] mb-2">
+            {validListings} listings · click each above
+          </p>
+          <p className="body-sm text-fg-dim text-[11px]">
+            Each part links to its cheapest vendor. Phase 2 adds a single-click
+            multi-vendor checkout.
+          </p>
+        </div>
+      )}
       <div className="hairline-t px-5 py-3">
         <p className="eyebrow text-fg-dim text-[10px]">
           warnings live in v2 of the editor

@@ -13,6 +13,7 @@ export type BuildItemRow = {
     name: string;
     categorySlug: string;
     cheapestPriceCents: number | null;
+    cheapestListingId: number | null;
     vendorCount: number;
   };
 };
@@ -91,13 +92,23 @@ export async function getBuild(slug: string): Promise<BuildDetail | null> {
   const items: BuildItemRow[] = await Promise.all(
     itemRows.map(async (r) => {
       const listings = await db
-        .select({ priceCents: vendorListings.priceCents, vendorId: vendorListings.vendorId })
+        .select({
+          listingId: vendorListings.id,
+          priceCents: vendorListings.priceCents,
+          vendorId: vendorListings.vendorId,
+        })
         .from(vendorListings)
         .where(eq(vendorListings.partId, r.partId));
-      const cheapest = listings.reduce<number | null>((acc, l) => {
-        if (l.priceCents == null) return acc;
-        return acc == null || l.priceCents < acc ? l.priceCents : acc;
-      }, null);
+      const cheapestListing = listings.reduce<{ id: number; priceCents: number } | null>(
+        (acc, l) => {
+          if (l.priceCents == null) return acc;
+          if (!acc || l.priceCents < acc.priceCents) {
+            return { id: l.listingId, priceCents: l.priceCents };
+          }
+          return acc;
+        },
+        null,
+      );
       const vendorCount = new Set(listings.map((l) => l.vendorId)).size;
       return {
         position: r.position,
@@ -108,7 +119,8 @@ export async function getBuild(slug: string): Promise<BuildDetail | null> {
           model: r.partModel,
           name: r.name,
           categorySlug: r.categorySlug,
-          cheapestPriceCents: cheapest,
+          cheapestPriceCents: cheapestListing?.priceCents ?? null,
+          cheapestListingId: cheapestListing?.id ?? null,
           vendorCount,
         },
       };
