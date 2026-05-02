@@ -50,12 +50,14 @@ beforeAll(async () => {
   vendorId = vendor.id;
 
   // Insert deterministic parts: one with a fitting rule, one incompatible, one unknown.
+  // The "unknown" part's name includes a Subaru synonym ("WRX") so the make-name
+  // heuristic keeps it at status="unknown" instead of demoting to "incompatible".
   const inserted = await db
     .insert(parts)
     .values([
       { categoryId, brand: 'Cobb', model: 'SF Intake', name: 'Cobb SF Intake' },
       { categoryId, brand: 'AEM', model: 'Air Intake', name: 'AEM Air Intake' },
-      { categoryId, brand: 'Generic', model: 'Cone Filter', name: 'Generic Cone Filter' },
+      { categoryId, brand: 'Generic', model: 'WRX Cone Filter', name: 'Generic WRX Cone Filter' },
     ])
     .returning();
 
@@ -152,5 +154,95 @@ describe('listCategoryPartsRankedForVehicle', () => {
     });
     expect(byModel.length).toBe(1);
     expect(byModel[0].id).toBe(unknownPartId);
+  });
+});
+
+describe('listCategoryPartsRankedForVehicle make-name heuristic', () => {
+  let vwCategoryId: number;
+  let vwVehicleId: number;
+  let vwVendorId: number;
+  let vwGolfPartId: number;
+  let subaruWrxPartId: number;
+
+  beforeAll(async () => {
+    // This describe block sets up its own deterministic data; truncate first.
+    await db.execute(
+      sql`TRUNCATE TABLE parts, vendor_listings, fitment_rules RESTART IDENTITY CASCADE`,
+    );
+
+    const [c] = await db
+      .select()
+      .from(categories)
+      .where(eq(categories.slug, 'intake'))
+      .limit(1);
+    if (!c) throw new Error('categories must be seeded; run seed.test.ts first');
+    vwCategoryId = c.id;
+
+    // Pick any seeded VW Golf R Mk7 row.
+    const [vw] = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.make, 'Volkswagen'))
+      .limit(1);
+    if (!vw) throw new Error('vehicles must be seeded; run seed.test.ts first');
+    vwVehicleId = vw.id;
+
+    const [vendor] = await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.slug, 'fcp-euro'))
+      .limit(1);
+    if (!vendor) throw new Error('vendors must be seeded; run seed.test.ts first');
+    vwVendorId = vendor.id;
+
+    // Two parts in 'intake', NEITHER with a fitment_rules row.
+    // - "Volkswagen Golf R Intake": matches MAKE_SYNONYMS for Volkswagen → stays "unknown"
+    // - "Subaru WRX Intake": matches MAKE_SYNONYMS for Subaru, NOT for Volkswagen → "incompatible"
+    const inserted = await db
+      .insert(parts)
+      .values([
+        {
+          categoryId: vwCategoryId,
+          brand: 'APR',
+          model: 'Golf R Intake',
+          name: 'Volkswagen Golf R Intake',
+        },
+        {
+          categoryId: vwCategoryId,
+          brand: 'Cobb',
+          model: 'WRX Intake',
+          name: 'Subaru WRX Intake',
+        },
+      ])
+      .returning();
+
+    vwGolfPartId = inserted[0].id;
+    subaruWrxPartId = inserted[1].id;
+
+    for (const p of inserted) {
+      await db.insert(vendorListings).values({
+        partId: p.id,
+        vendorId: vwVendorId,
+        vendorUrl: `https://example.com/${p.id}`,
+        priceCents: 30000,
+        inStock: true,
+      });
+    }
+    // Intentionally no fitment_rules inserted.
+  });
+
+  it('demotes parts with no rule and no make-name match to incompatible', async () => {
+    const rows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'intake',
+      vehicleId: vwVehicleId,
+    });
+    const vw = rows.find((r) => r.id === vwGolfPartId);
+    const wrx = rows.find((r) => r.id === subaruWrxPartId);
+    expect(vw).toBeDefined();
+    expect(wrx).toBeDefined();
+    expect(vw!.status).toBe('unknown');
+    expect(vw!.caveat).toBeNull();
+    expect(wrx!.status).toBe('incompatible');
+    expect(wrx!.caveat).toBe('No fitment match for Volkswagen');
   });
 });
