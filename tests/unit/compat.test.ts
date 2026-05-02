@@ -243,7 +243,8 @@ describe('listCategoryPartsRankedForVehicle make-name heuristic', () => {
     expect(vw!.status).toBe('unknown');
     expect(vw!.caveat).toBeNull();
     expect(wrx!.status).toBe('incompatible');
-    expect(wrx!.caveat).toBe('No fitment match for Volkswagen');
+    // Caveat now includes model — "No fitment match for Volkswagen Golf R" (subModel is null).
+    expect(wrx!.caveat).toBe('No fitment match for Volkswagen Golf R');
   });
 
   it('hideIncompatible filters out parts demoted to incompatible by the heuristic', async () => {
@@ -267,5 +268,124 @@ describe('listCategoryPartsRankedForVehicle make-name heuristic', () => {
     // both parts return; everything is "unknown" without a vehicle context
     expect(rows.length).toBe(2);
     for (const r of rows) expect(r.status).toBe('unknown');
+  });
+});
+
+describe('listCategoryPartsRankedForVehicle model-aware heuristic', () => {
+  let intakeCategoryId: number;
+  let civicSiVehicleId: number;
+  let civicTypeRVehicleId: number;
+  let mustangGtVehicleId: number;
+  let mustangEcoboostVehicleId: number;
+  let typeRPartId: number;
+  let siPartId: number;
+  let mustangGtPartId: number;
+  let mustangEcoboostPartId: number;
+  let vendorIdLocal: number;
+
+  beforeAll(async () => {
+    await db.execute(
+      sql`TRUNCATE TABLE parts, vendor_listings, fitment_rules RESTART IDENTITY CASCADE`,
+    );
+
+    const [c] = await db.select().from(categories).where(eq(categories.slug, 'intake')).limit(1);
+    intakeCategoryId = c.id;
+
+    const [si] = await db.select().from(vehicles).where(eq(vehicles.model, 'Civic Si')).limit(1);
+    const [tr] = await db.select().from(vehicles).where(eq(vehicles.model, 'Civic Type R')).limit(1);
+    const mustangs = await db.select().from(vehicles).where(eq(vehicles.model, 'Mustang')).limit(50);
+    const gtRow = mustangs.find((m) => m.subModel === 'GT');
+    const ecoRow = mustangs.find((m) => m.subModel === 'Ecoboost');
+    if (!si || !tr || !gtRow || !ecoRow) {
+      throw new Error('Civic Si/Type R + Mustang GT/Ecoboost vehicles must be seeded');
+    }
+    civicSiVehicleId = si.id;
+    civicTypeRVehicleId = tr.id;
+    mustangGtVehicleId = gtRow.id;
+    mustangEcoboostVehicleId = ecoRow.id;
+
+    const [vendor] = await db.select().from(vendors).where(eq(vendors.slug, 'rallysport-direct')).limit(1);
+    vendorIdLocal = vendor.id;
+
+    // 4 parts, NONE with fitment_rules. The heuristic alone decides.
+    const inserted = await db.insert(parts).values([
+      {
+        categoryId: intakeCategoryId,
+        brand: 'K&N Engineering',
+        model: 'Performance Air Intake System',
+        name: 'K&N Performance Air Intake System - 2023-2026 Honda Civic Type R',
+      },
+      {
+        categoryId: intakeCategoryId,
+        brand: 'AEM',
+        model: 'Cold Air Intake',
+        name: 'AEM Cold Air Intake - 2022-2024 Honda Civic Si',
+      },
+      {
+        categoryId: intakeCategoryId,
+        brand: 'Roush',
+        model: 'GT Cold Air Intake',
+        name: 'Roush Cold Air Intake - 2018-2023 Mustang GT',
+      },
+      {
+        categoryId: intakeCategoryId,
+        brand: 'JLT',
+        model: 'Ecoboost Cold Air Intake',
+        name: 'JLT Cold Air Intake - 2015-2023 Ford Mustang Ecoboost',
+      },
+    ]).returning();
+
+    typeRPartId = inserted[0].id;
+    siPartId = inserted[1].id;
+    mustangGtPartId = inserted[2].id;
+    mustangEcoboostPartId = inserted[3].id;
+
+    for (const p of inserted) {
+      await db.insert(vendorListings).values({
+        partId: p.id,
+        vendorId: vendorIdLocal,
+        vendorUrl: `https://example.com/${p.id}`,
+        priceCents: 30000,
+        inStock: true,
+      });
+    }
+  });
+
+  it('Type R intake does NOT match Civic Si vehicle (model-aware)', async () => {
+    const rows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'intake',
+      vehicleId: civicSiVehicleId,
+    });
+    const typeR = rows.find((r) => r.id === typeRPartId);
+    const si = rows.find((r) => r.id === siPartId);
+    expect(typeR?.status).toBe('incompatible');
+    expect(si?.status).toBe('unknown');
+  });
+
+  it('Si intake does NOT match Civic Type R vehicle (model-aware)', async () => {
+    const rows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'intake',
+      vehicleId: civicTypeRVehicleId,
+    });
+    const typeR = rows.find((r) => r.id === typeRPartId);
+    const si = rows.find((r) => r.id === siPartId);
+    expect(typeR?.status).toBe('unknown');
+    expect(si?.status).toBe('incompatible');
+  });
+
+  it('Mustang GT and Ecoboost intakes are mutually exclusive (sub-model-aware)', async () => {
+    const gtRows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'intake',
+      vehicleId: mustangGtVehicleId,
+    });
+    expect(gtRows.find((r) => r.id === mustangGtPartId)?.status).toBe('unknown');
+    expect(gtRows.find((r) => r.id === mustangEcoboostPartId)?.status).toBe('incompatible');
+
+    const ecoRows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'intake',
+      vehicleId: mustangEcoboostVehicleId,
+    });
+    expect(ecoRows.find((r) => r.id === mustangGtPartId)?.status).toBe('incompatible');
+    expect(ecoRows.find((r) => r.id === mustangEcoboostPartId)?.status).toBe('unknown');
   });
 });

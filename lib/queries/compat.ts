@@ -36,22 +36,84 @@ const STATUS_PRIORITY: Record<CompatStatus, number> = {
 };
 
 /**
- * Vendor product names rarely say "Volkswagen Golf R Mk7" verbatim — they say "VW", "MQB", "MK7",
- * "Golf", "GTI", etc. This map covers the 8 platform groups in our seed.
+ * Make-level synonyms — last-resort fallback when no model-level entry exists.
+ * Avoid platform-confusing terms here (e.g. NO 'civic' on Honda — Civic Si and
+ * Civic Type R are separate vehicles and need their own model-level rules).
  */
 const MAKE_SYNONYMS: Record<string, string[]> = {
-  Subaru:     ['subaru', 'wrx', 'sti', 'brz', 'impreza', 'forester', 'va chassis', 'vb chassis'],
-  Toyota:     ['toyota', 'gr86', 'gr 86', 'gr corolla', 'corolla', 'zn8'],
-  Honda:      ['honda', 'civic', 'type r', 'fk8', 'fl5', 'fe1'],
-  Ford:       ['ford', 'mustang', 's550', 'ecoboost', 'gt'],
-  Mazda:      ['mazda', 'mx-5', 'mx 5', 'miata', 'nd'],
-  Volkswagen: ['volkswagen', 'vw', 'golf', 'gti', 'mqb', 'mk7', 'mk8', 'ea888'],
+  Subaru:     ['subaru', 'impreza', 'va chassis', 'vb chassis'],
+  Toyota:     ['toyota'],
+  Honda:      ['honda'],
+  Ford:       ['ford'],
+  Mazda:      ['mazda'],
+  Volkswagen: ['volkswagen', 'vw', 'mqb', 'ea888'],
 };
 
-function partLooksRelevantToMake(partName: string, partBrand: string, vehicleMake: string): boolean {
-  const synonyms = MAKE_SYNONYMS[vehicleMake] ?? [vehicleMake.toLowerCase()];
-  const haystack = `${partName} ${partBrand}`.toLowerCase();
-  return synonyms.some((s) => haystack.includes(s));
+/**
+ * Model-level synonyms with positive (`yes`) and negative (`no`) lists.
+ * Keyed by `vehicle.model` (or `vehicle.model + ' ' + vehicle.subModel` for
+ * Mustang variants) — see `vehicleMatchKey()` below.
+ *
+ * The `no` list is critical: it prevents Civic Type R parts from matching
+ * Civic Si vehicles, GTI parts from matching Golf R, axleback parts from
+ * matching catbacks, etc. Stops the heuristic from over-matching.
+ */
+const MODEL_SYNONYMS: Record<string, { yes: string[]; no: string[] }> = {
+  // Subaru
+  WRX:               { yes: ['wrx'],                                    no: ['sti'] },
+  'WRX STI':         { yes: ['sti', 'wrx sti', 'wrx-sti'],              no: [] },
+  BRZ:               { yes: ['brz', 'zd8'],                             no: ['gr86', 'gr 86', 'frs', 'fr-s'] },
+  // Toyota
+  'GR Corolla':      { yes: ['gr corolla', 'gr-corolla'],               no: ['gr86', 'gr 86'] },
+  GR86:              { yes: ['gr86', 'gr 86', 'zn8', 'frs', 'fr-s'],    no: ['brz', 'gr corolla'] },
+  // Honda
+  'Civic Si':        { yes: ['civic si', 'civic-si', 'fe1', 'si sedan'], no: ['type r', 'type-r', 'typer', 'fk8', 'fl5'] },
+  'Civic Type R':    { yes: ['type r', 'type-r', 'typer', 'fk8', 'fl5'], no: ['civic si', ' si '] },
+  // Ford — Mustang split via subModel
+  'Mustang GT':      { yes: ['mustang gt', '5.0l mustang', 'mustang 5.0', 'gt mustang'], no: ['ecoboost', '2.3l', 'shelby'] },
+  'Mustang Ecoboost':{ yes: ['ecoboost', '2.3l mustang', 'mustang ecoboost'],            no: ['mustang gt', '5.0l', 'mustang 5.0', 'shelby'] },
+  // Mazda
+  'MX-5 Miata':      { yes: ['mx-5', 'mx 5', 'miata'],                  no: [] },
+  // Volkswagen
+  'Golf R':          { yes: ['golf r', 'golf-r', 'mk7 r', 'mk8 r'],     no: ['gti'] },
+  GTI:               { yes: ['gti'],                                    no: ['golf r', 'golf-r'] },
+};
+
+/** Build the key into MODEL_SYNONYMS for a given vehicle. */
+function vehicleMatchKey(vehicle: { model: string; subModel: string | null }): string {
+  // Mustang rows have model='Mustang' + subModel='GT' or 'Ecoboost'.
+  if (vehicle.model === 'Mustang' && vehicle.subModel) {
+    return `${vehicle.model} ${vehicle.subModel}`;
+  }
+  return vehicle.model;
+}
+
+/**
+ * Heuristic: does the part name/brand text plausibly mention this vehicle's
+ * specific model (with sub-model awareness for Mustang)?
+ *
+ * Returns true (plausible) if any positive synonym is in the haystack AND no
+ * negative synonym is in the haystack. Falls back to make-level check if the
+ * model isn't in MODEL_SYNONYMS.
+ *
+ * Used only when no fitment_rule explicitly matches the vehicle.
+ */
+function partLooksRelevantToVehicle(
+  partName: string,
+  partBrand: string,
+  vehicle: { make: string; model: string; subModel: string | null },
+): boolean {
+  // Pad with spaces so single-letter "no" tokens like " si " match word boundaries.
+  const haystack = ` ${partName} ${partBrand} `.toLowerCase();
+  const key = vehicleMatchKey(vehicle);
+  const modelRules = MODEL_SYNONYMS[key];
+  if (modelRules) {
+    if (modelRules.no.some((s) => haystack.includes(s))) return false;
+    if (modelRules.yes.some((s) => haystack.includes(s))) return true;
+    // Model defined but no positive match — fall through to make check.
+  }
+  const makeSynonyms = MAKE_SYNONYMS[vehicle.make] ?? [vehicle.make.toLowerCase()];
+  return makeSynonyms.some((s) => haystack.includes(s));
 }
 
 /**
@@ -157,14 +219,16 @@ export async function listCategoryPartsRankedForVehicle(opts: {
     .map((r) => {
       const rule = byPart[r.id];
       if (rule) return { ...r, status: rule.status, caveat: rule.caveat };
-      // No matching fitment rule. With a vehicle selected, fall back to a name heuristic:
-      // if the part name/brand mentions the vehicle's make (or known synonyms), keep "unknown"
-      // (we don't *know* it fits, but it's plausible). Otherwise demote to "incompatible".
-      const looksRelevant = partLooksRelevantToMake(r.name, r.brand, v.make);
+      // No matching fitment rule. With a vehicle selected, fall back to a model-aware
+      // name heuristic. Type R parts no longer match Civic Si vehicles, GTI parts no
+      // longer match Golf R, etc. — see MODEL_SYNONYMS for the full list of negative
+      // matches. Caveat tells the user why the part was filtered out.
+      const looksRelevant = partLooksRelevantToVehicle(r.name, r.brand, v);
+      const vehicleLabel = v.subModel ? `${v.make} ${v.model} ${v.subModel}` : `${v.make} ${v.model}`;
       return {
         ...r,
         status: looksRelevant ? ('unknown' as CompatStatus) : ('incompatible' as CompatStatus),
-        caveat: looksRelevant ? null : `No fitment match for ${v.make}`,
+        caveat: looksRelevant ? null : `No fitment match for ${vehicleLabel}`,
       };
     })
     .sort((a, b) => STATUS_PRIORITY[b.status] - STATUS_PRIORITY[a.status]);
