@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/client';
 import { builds, buildItems, parts, categories, vehicles, vendorListings } from '@/lib/db/schema';
-import { eq, sql, max } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { newBuildSlug } from '@/lib/slug';
 
 export type BuildItemRow = {
@@ -135,17 +135,35 @@ export async function getBuild(slug: string): Promise<BuildDetail | null> {
 export async function addBuildItem(opts: { buildSlug: string; partId: number; note?: string | null }): Promise<void> {
   const [b] = await db.select({ id: builds.id }).from(builds).where(eq(builds.slug, opts.buildSlug)).limit(1);
   if (!b) throw new Error(`build not found: ${opts.buildSlug}`);
-  const [{ next }] = await db
-    .select({ next: sql<number>`COALESCE(${max(buildItems.position)}, 0) + 1` })
-    .from(buildItems)
-    .where(eq(buildItems.buildId, b.id));
-  await db.insert(buildItems).values({
-    buildId: b.id,
-    partId: opts.partId,
-    position: next,
-    userNote: opts.note ?? null,
+
+  // Look up the new part's category so we can replace any existing item in
+  // the same category — PCPartPicker semantics: one part per category slot.
+  // Also handles dup-click races (second insert overwrites the first).
+  const [partRow] = await db
+    .select({ id: parts.id, categoryId: parts.categoryId })
+    .from(parts)
+    .where(eq(parts.id, opts.partId))
+    .limit(1);
+  if (!partRow) throw new Error(`part not found: ${opts.partId}`);
+
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(buildItems)
+      .where(
+        sql`${buildItems.buildId} = ${b.id} AND ${buildItems.partId} IN (SELECT id FROM parts WHERE category_id = ${partRow.categoryId})`,
+      );
+    const [{ next }] = await tx
+      .select({ next: sql<number>`COALESCE(MAX(${buildItems.position}), 0) + 1` })
+      .from(buildItems)
+      .where(eq(buildItems.buildId, b.id));
+    await tx.insert(buildItems).values({
+      buildId: b.id,
+      partId: opts.partId,
+      position: next,
+      userNote: opts.note ?? null,
+    });
+    await tx.update(builds).set({ updatedAt: new Date() }).where(eq(builds.id, b.id));
   });
-  await db.update(builds).set({ updatedAt: new Date() }).where(eq(builds.id, b.id));
 }
 
 export async function removeBuildItem(opts: { buildSlug: string; partId: number }): Promise<void> {

@@ -49,4 +49,38 @@ describe('build queries', () => {
     after = await getBuild(b.slug);
     expect(after!.items.length).toBe(0);
   });
+
+  it('addBuildItem replaces an existing item in the same category instead of duplicating', async () => {
+    const b = await createBuild({ vehicleId });
+    const { parts, categories } = await import('@/lib/db/schema');
+    const [intake] = await db.select().from(categories).where(eq(categories.slug, 'intake')).limit(1);
+    const [p1] = await db
+      .insert(parts)
+      .values({ categoryId: intake.id, brand: 'A', model: 'First Intake', name: 'A First Intake' })
+      .returning();
+    const [p2] = await db
+      .insert(parts)
+      .values({ categoryId: intake.id, brand: 'B', model: 'Second Intake', name: 'B Second Intake' })
+      .returning();
+    await addBuildItem({ buildSlug: b.slug, partId: p1.id });
+    await addBuildItem({ buildSlug: b.slug, partId: p2.id });
+    const after = await getBuild(b.slug);
+    expect(after!.items.length).toBe(1);
+    expect(after!.items[0].part.id).toBe(p2.id);
+  });
+
+  it('addBuildItem is idempotent for the same part — re-adding does not duplicate', async () => {
+    const b = await createBuild({ vehicleId });
+    const { parts, categories } = await import('@/lib/db/schema');
+    const [intake] = await db.select().from(categories).where(eq(categories.slug, 'intake')).limit(1);
+    const [p] = await db
+      .insert(parts)
+      .values({ categoryId: intake.id, brand: 'A', model: 'Dup Intake', name: 'A Dup Intake' })
+      .returning();
+    await addBuildItem({ buildSlug: b.slug, partId: p.id });
+    await addBuildItem({ buildSlug: b.slug, partId: p.id });
+    const after = await getBuild(b.slug);
+    expect(after!.items.length).toBe(1);
+    expect(after!.items[0].part.id).toBe(p.id);
+  });
 });
