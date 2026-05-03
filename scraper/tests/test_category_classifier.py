@@ -97,3 +97,40 @@ def test_current_slug_is_a_prior_for_truly_ambiguous_names():
     assert classify_heuristic("Bilstein B6 Front Shock", "Bilstein", "coilovers-old") == "coilovers"
     # Same name, different prior — uses springs-old's default, not coilovers.
     assert classify_heuristic("Bilstein B6 Front Shock", "Bilstein", "springs-old") == "lowering-springs"
+
+
+from unittest.mock import patch
+from scraper.category_classifier import classify_with_llm, classify
+
+
+def test_llm_fallback_returns_one_of_the_valid_leaves():
+    """When heuristic and prior both miss, LLM is called and result is filtered
+    against the known leaf set."""
+    with patch("scraper.category_classifier._call_deepseek") as mock_llm:
+        mock_llm.return_value = "intercooler"
+        out = classify_with_llm("Mystery Aluminum Box", "Mishimoto", current_slug=None)
+        assert out == "intercooler"
+
+
+def test_llm_returning_invalid_slug_yields_none():
+    with patch("scraper.category_classifier._call_deepseek") as mock_llm:
+        mock_llm.return_value = "fake-slug-not-a-leaf"
+        out = classify_with_llm("Strange Thing", "Brand", current_slug=None)
+        assert out is None
+
+
+def test_classify_runs_heuristic_first_then_llm():
+    """Heuristic should win for a clearly-named part; LLM should not be called."""
+    with patch("scraper.category_classifier._call_deepseek") as mock_llm:
+        mock_llm.return_value = "intercooler"
+        out = classify("AEM Cold Air Intake", "AEM", "intake-old")
+        assert out == "cold-air-intake"
+        mock_llm.assert_not_called()
+
+
+def test_classify_falls_through_to_llm_when_heuristic_misses():
+    with patch("scraper.category_classifier._call_deepseek") as mock_llm:
+        mock_llm.return_value = "wheels"
+        out = classify("Mystery Round Metal Thing", "GenericBrand", current_slug=None)
+        assert out == "wheels"
+        mock_llm.assert_called_once()
