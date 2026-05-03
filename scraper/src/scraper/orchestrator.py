@@ -18,6 +18,7 @@ from scraper.vendors import (
     win27,
     flyin_miata,
     maperformance,
+    iag_performance,
 )
 
 log = logging.getLogger(__name__)
@@ -124,6 +125,12 @@ def run_vendor_from_fixtures(vendor_slug: str, fixtures_dir: Path) -> int:
         for f in sorted(fixtures_dir.glob("product_*.html")):
             html = f.read_text(encoding="utf-8", errors="ignore")
             p = maperformance.parse_product_page(html, url=f"file://{f}")
+            if p:
+                parts.append(p)
+    elif vendor_slug == "iag-performance":
+        for f in sorted(fixtures_dir.glob("product_*.html")):
+            html = f.read_text(encoding="utf-8", errors="ignore")
+            p = iag_performance.parse_product_page(html, url=f"file://{f}")
             if p:
                 parts.append(p)
     else:
@@ -720,6 +727,89 @@ async def _live_scrape_maperformance(
     return out
 
 
+# IAG Performance Subaru-deep category seed list. IAG is a BigCommerce
+# Stencil storefront (`/<system>/<sub>[/<sub>]/` for category pages) and
+# the deepest WRX/STI/BRZ-fit catalog on the market — pairing COBB's
+# full house catalog (catbacks, tuners, BPVs) with IAG-house engine
+# internals + AOS systems that RallySport Direct doesn't carry. This
+# seed list deepens Subaru coverage and adds engine-build SKUs to the
+# catalog for the first time.
+#
+# Probe results (verified 2026-04-30, post-card-title selector):
+#   /engine/exhausts/cat-back/                           -> 30
+#   /engine/exhausts/axle-back/                          -> 29
+#   /engine/exhausts/downpipes-j-pipes/                  -> 11
+#   /engine/air-induction/air-intakes-hoses/             -> 40
+#   /engine/cooling/intercoolers/                        -> 30
+#   /engine/engine-management/tuners/                    -> 16
+#   /engine/turbos-superchargers/blow-off-valves/        -> 30
+#   /suspension/height-adjustment/coilovers/             -> 30
+#   /suspension/suspension-linkage/sway-bars/            -> 30
+IAG_PERFORMANCE_SEED_CATEGORIES: list[tuple[str, str]] = [
+    ("https://www.iagperformance.com/engine/exhausts/cat-back/", "catback"),
+    ("https://www.iagperformance.com/engine/exhausts/axle-back/", "axleback"),
+    ("https://www.iagperformance.com/engine/exhausts/downpipes-j-pipes/", "downpipe"),
+    ("https://www.iagperformance.com/engine/air-induction/air-intakes-hoses/", "intake"),
+    ("https://www.iagperformance.com/engine/cooling/intercoolers/", "intercooler"),
+    ("https://www.iagperformance.com/engine/engine-management/tuners/", "tune"),
+    ("https://www.iagperformance.com/engine/turbos-superchargers/blow-off-valves/", "bov"),
+    ("https://www.iagperformance.com/suspension/height-adjustment/coilovers/", "coilovers"),
+    ("https://www.iagperformance.com/suspension/suspension-linkage/sway-bars/", "sway-bars"),
+]
+
+
+async def _live_scrape_iag_performance(
+    *, max_products_per_category: int = 25
+) -> list[tuple[NormalizedPart, str]]:
+    """Live-scrape IAG's seeded Subaru-deep categories.
+
+    Returns a list of ``(part, target_slug)`` tuples. The slug comes from
+    the seed-list entry the product was discovered under. IAG accepts our
+    bot UA without challenge and has no Cloudflare/anti-bot layer, so the
+    standard 1.0s per-request pacing is sufficient.
+    """
+    out: list[tuple[NormalizedPart, str]] = []
+    fetched = 0
+    cats_done = 0
+    async with httpx.AsyncClient(
+        headers=HEADERS, timeout=20.0, follow_redirects=True
+    ) as client:
+        for cat_url, slug in IAG_PERFORMANCE_SEED_CATEGORIES:
+            try:
+                r = await client.get(cat_url)
+                r.raise_for_status()
+            except httpx.HTTPError:
+                log.exception("category fetch failed: %s", cat_url)
+                continue
+            urls = iag_performance.parse_category_page(
+                r.text, base_url="https://www.iagperformance.com"
+            )
+            log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
+            for u in urls[:max_products_per_category]:
+                await asyncio.sleep(1.0)  # ~1 req/sec rate limit
+                try:
+                    pr = await client.get(u)
+                except httpx.HTTPError:
+                    log.exception("product fetch failed: %s", u)
+                    continue
+                if pr.status_code != 200:
+                    log.warning("product %s returned status %s", u, pr.status_code)
+                    continue
+                p = iag_performance.parse_product_page(pr.text, url=u)
+                if p:
+                    out.append((p, slug))
+                fetched += 1
+                if fetched % 25 == 0:
+                    log.info(
+                        "progress: %d products from %d categories",
+                        fetched,
+                        cats_done + 1,
+                    )
+            cats_done += 1
+    log.info("scrape done: %d products from %d categories", fetched, cats_done)
+    return out
+
+
 def run_vendor_live(vendor_slug: str) -> int:
     if vendor_slug == "fcp-euro":
         parts = asyncio.run(_live_scrape_fcp_euro())
@@ -735,6 +825,8 @@ def run_vendor_live(vendor_slug: str) -> int:
         parts = asyncio.run(_live_scrape_flyin_miata())
     elif vendor_slug == "maperformance":
         parts = asyncio.run(_live_scrape_maperformance())
+    elif vendor_slug == "iag-performance":
+        parts = asyncio.run(_live_scrape_iag_performance())
     else:
         raise ValueError(f"unknown vendor: {vendor_slug}")
     return _process_and_upsert(parts)

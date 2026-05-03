@@ -52,6 +52,11 @@ const data: V[] = [
     affiliateValue: 'carpartpicker', baseUrl: 'https://www.maperformance.com',
   },
   {
+    name: 'IAG Performance', slug: 'iag-performance',
+    affiliateProgram: 'AvantLink', affiliateParam: 'avad',
+    affiliateValue: 'carpartpicker', baseUrl: 'https://www.iagperformance.com',
+  },
+  {
     name: 'eBay Motors', slug: 'ebay-motors',
     affiliateProgram: 'eBay Partner Network', affiliateParam: 'campid',
     affiliateValue: 'carpartpicker', baseUrl: 'https://www.ebay.com',
