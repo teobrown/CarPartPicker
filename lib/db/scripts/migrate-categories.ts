@@ -13,25 +13,33 @@ config({ path: '.env.local' });
 // lib/db/seed/run.ts. Static imports are hoisted and would initialize the
 // postgres pool before config() runs, leaving DATABASE_URL undefined.
 async function main() {
-  const { db } = await import('@/lib/db/client');
-  const { categories } = await import('@/lib/db/schema');
-  const { sql, like, not } = await import('drizzle-orm');
-  const { runCategorySeed } = await import('@/lib/db/seed/categories');
   console.log('--- migrate-categories ---');
 
-  // Suffix every category slug that isn't already suffixed.
+  const { db } = await import('@/lib/db/client');
+  const { categories } = await import('@/lib/db/schema');
+  const { sql, like, not, isNotNull } = await import('drizzle-orm');
+  const { runCategorySeed } = await import('@/lib/db/seed/categories');
+
   const before = await db.select().from(categories);
   console.log(`existing categories before: ${before.length}`);
-  await db
-    .update(categories)
-    .set({ slug: sql`${categories.slug} || '-old'` })
-    .where(not(like(categories.slug, '%-old')));
 
-  const suffixed = await db.select().from(categories);
-  console.log(`after suffix pass: ${suffixed.length} rows, ${suffixed.filter((c) => c.slug.endsWith('-old')).length} now end in -old`);
+  // Idempotency guard: if any row already has a parent_id, the new taxonomy
+  // is in place and the suffix step has already run on a prior invocation.
+  // Skip it — re-suffixing the new top-level slugs (intake, coilovers, etc.)
+  // would collide with the -old rows already on disk.
+  const newTaxonomyApplied = before.some((c) => c.parentId != null);
+  if (newTaxonomyApplied) {
+    console.log('new taxonomy already in place — skipping suffix step');
+  } else {
+    await db
+      .update(categories)
+      .set({ slug: sql`${categories.slug} || '-old'` })
+      .where(not(like(categories.slug, '%-old')));
+    const suffixed = await db.select().from(categories);
+    console.log(`after suffix pass: ${suffixed.length} rows, ${suffixed.filter((c) => c.slug.endsWith('-old')).length} now end in -old`);
+  }
 
-  // Run the (rewritten) seed. Inserts new parents + leaves. Idempotent via
-  // unique slug + ON CONFLICT DO NOTHING.
+  // Always run the seed — it's idempotent via ON CONFLICT DO NOTHING.
   const inserted = await runCategorySeed();
   console.log(`runCategorySeed reports ${inserted} rows attempted`);
 
