@@ -96,8 +96,22 @@ _RULES: list[tuple[re.Pattern[str], str]] = [
 # a fallback PRIOR when no regex rule fires — the part keeps its old leaf's
 # spirit (e.g. parts in `coilovers-old` default to coilovers, parts in
 # `springs-old` default to lowering-springs).
+#
+# Deliberately omitted: `intake-old`. The old `intake` leaf was an
+# aggregation of seven new leaves (CAI / SRI / RAI / intake-manifold /
+# air-filter / intake-hose / maf-housing). Codex flagged that 53.7% of
+# parts in the `-old` bucket weren't matched by any specific intake regex
+# — they were silently dumped into cold-air-intake (the most common
+# bucket), so e.g. snorkels, throttle bodies, conversion kits, and
+# secondary air pumps were all landing as cold-air-intakes. No prior
+# means those parts hit the LLM or misc instead, where they get a
+# real classification or a manual-review queue.
+#
+# `catback-old` and `wheels-old` are kept because the exhaust and wheel-
+# hardware rules already fire before the generic fallback (rule order),
+# so the prior only catches truly unrecognized parts and the default
+# bucket (catback-exhaust / wheels) is genuinely the most likely landing.
 _PRIOR_DEFAULTS: dict[str, str] = {
-    "intake-old": "cold-air-intake",
     "catback-old": "catback-exhaust",
     "axleback-old": "axleback-exhaust",
     "muffler-delete-old": "muffler-delete",
@@ -174,7 +188,11 @@ def _call_deepseek(name: str, brand: str) -> Optional[str]:
             {"role": "user", "content": f"Name: {name}\nBrand: {brand}"},
         ],
         temperature=0.0,
-        max_tokens=16,
+        # deepseek-v4-flash is a reasoning model — max_tokens budget covers
+        # both the hidden reasoning trace AND the visible answer. With a
+        # 16-token cap the entire budget went to reasoning and the answer
+        # came back empty. 256 leaves comfortable headroom for both.
+        max_tokens=256,
     )
     raw = (completion.choices[0].message.content or "").strip().lower()
     return raw or None
@@ -185,13 +203,22 @@ def classify_with_llm(
     brand: str,
     current_slug: Optional[str],
 ) -> Optional[str]:
-    """LLM classification with disk cache and slug-whitelist guard."""
+    """LLM classification with disk cache and slug-whitelist guard.
+
+    Cache is keyed on (name, brand). Invalid / None responses are NOT
+    cached — those usually mean a transient API issue or a model config
+    problem, and we want a re-run to re-attempt rather than serve stale
+    bad data.
+    """
     cache_key = hashlib.sha256(f"{name}|{brand}".encode("utf-8")).hexdigest()[:32]
     cache_path = _LLM_CACHE_DIR / f"{cache_key}.json"
     if cache_path.exists():
         try:
             cached = json.loads(cache_path.read_text(encoding="utf-8"))
-            return cached.get("slug")
+            cached_slug = cached.get("slug")
+            # Only trust cached results that landed on a valid leaf.
+            if cached_slug in _VALID_LEAVES:
+                return cached_slug
         except (json.JSONDecodeError, OSError):
             pass
 
@@ -200,11 +227,11 @@ def classify_with_llm(
     except Exception as e:
         # Don't crash the run on a transient API failure — log and skip.
         # Caller (orchestrator) treats None as "couldn't classify, send to misc".
-        # Don't cache this; let the next run re-attempt.
         log.warning("LLM classification failed for %r / %r: %s", name, brand, e)
         return None
     if slug not in _VALID_LEAVES:
-        slug = None
+        # Don't poison the cache with a None — let a future run re-try.
+        return None
 
     try:
         _LLM_CACHE_DIR.mkdir(parents=True, exist_ok=True)

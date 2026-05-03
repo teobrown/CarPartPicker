@@ -102,6 +102,16 @@ def test_unmatched_returns_none():
     assert classify_heuristic("Random Universal Adapter", "Generic", None) is None
 
 
+def test_intake_old_prior_was_dropped_to_force_subtype_resolution():
+    # Old `intake` leaf was an aggregation of 7 new leaves. Codex flagged 53.7%
+    # of `intake-old` parts as falling through to cold-air-intake by default
+    # when the regex didn't match — silently dumping snorkels, throttle bodies,
+    # vacuum pumps into the CAI bucket. Removing the intake-old prior pushes
+    # those to the LLM or misc instead.
+    assert classify_heuristic("Air Intake Snorkel", "Honda", "intake-old") is None
+    assert classify_heuristic("Throttle Body Spacer", "Generic", "intake-old") is None
+
+
 def test_current_slug_is_a_prior_for_truly_ambiguous_names():
     # "Front Shock" alone has no specific rule; prior-default falls back to
     # the current_slug's mapped leaf.
