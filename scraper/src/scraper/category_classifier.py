@@ -74,18 +74,18 @@ _RULES: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\b(lowering\s*spring|sport\s*spring|drop\s*spring|pro[\s\-]?kit\s*spring)\b", re.I), "lowering-springs"),
 
     # --- Body & aero ---
-    (re.compile(r"\b(front\s*lip|splitter|chin\s*spoiler)\b", re.I), "front-lip"),
-    (re.compile(r"\bside\s*skirt\b", re.I), "side-skirts"),
-    (re.compile(r"\b(rear\s*diffuser|underbody\s*diffuser)\b", re.I), "rear-diffuser"),
-    (re.compile(r"\b(spoiler|wing|ducktail)\b", re.I), "spoiler-wing"),
-    (re.compile(r"\bfender\s*flare\b", re.I), "fender-flares"),
-    (re.compile(r"\b(hood|bonnet)\b", re.I), "hood"),
+    (re.compile(r"\b(front\s*lips?|splitters?|chin\s*spoilers?)\b", re.I), "front-lip"),
+    (re.compile(r"\bside\s*skirts?\b", re.I), "side-skirts"),
+    (re.compile(r"\b(rear\s*diffusers?|underbody\s*diffusers?)\b", re.I), "rear-diffuser"),
+    (re.compile(r"\b(spoilers?|wings?|ducktails?)\b", re.I), "spoiler-wing"),
+    (re.compile(r"\bfender\s*flares?\b", re.I), "fender-flares"),
+    (re.compile(r"\b(hoods?|bonnets?|carbon\s*hoods?)\b", re.I), "hood"),
 
     # --- Lighting ---
-    (re.compile(r"\b(fog\s*light|fog\s*lamp)\b", re.I), "fog-lights"),
-    (re.compile(r"\b(headlight|headlamp|head\s*light)\b", re.I), "headlights"),
-    (re.compile(r"\b(taillight|tail\s*lamp|tail\s*light)\b", re.I), "taillights"),
-    (re.compile(r"\b(led\s*bulb|hid\s*kit|h11|9005|9006|h7\s*bulb)\b", re.I), "led-bulbs"),
+    (re.compile(r"\b(fog\s*lights?|fog\s*lamps?)\b", re.I), "fog-lights"),
+    (re.compile(r"\b(headlights?|headlamps?|head\s*lights?)\b", re.I), "headlights"),
+    (re.compile(r"\b(taillights?|tail\s*lamps?|tail\s*lights?)\b", re.I), "taillights"),
+    (re.compile(r"\b(led\s*bulbs?|hid\s*kits?|h11|9005|9006|h7\s*bulbs?)\b", re.I), "led-bulbs"),
 
     # --- Wheels & tires (last in the wheel/tire family — wheel-hardware rules above already filtered specific cases) ---
     (re.compile(r"\b(tire|tyre|advan|michelin|continental|yokohama|falken|bridgestone)\b", re.I), "tires"),

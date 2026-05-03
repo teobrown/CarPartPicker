@@ -70,12 +70,18 @@ from scraper.category_classifier import classify_heuristic
     ("Big Wing Spoiler", "Voltex", "spoiler-old", "spoiler-wing"),
     ("Carbon Fiber Hood, Vented", "Seibon", "lip-kit-old", "hood"),
     ("Fender Flares, Wide Body Set", "Liberty Walk", "fender-flares-old", "fender-flares"),
+    # Plural / hyphen variants (regression: codex caught these returning None)
+    ("Side Skirts, Carbon Fiber Pair", "Seibon", None, "side-skirts"),
+    ("Rear Diffusers Set", "Voltex", None, "rear-diffuser"),
+    ("Carbon Hoods", "Seibon", None, "hood"),
 
     # Lighting
     ("Diode Dynamics SS3 Pro Fog Light", "Diode Dynamics", "headlights-old", "fog-lights"),
+    ("Fog Lights Pair", "Generic", None, "fog-lights"),
     ("LED Headlight Assembly", "Morimoto", "headlights-old", "headlights"),
     ("LED Taillight Set, Smoked", "Anzo", "taillights-old", "taillights"),
     ("LED Bulb Kit H11", "Diode Dynamics", "headlights-old", "led-bulbs"),
+    ("LED Bulbs, 6000K Set", "Diode Dynamics", None, "led-bulbs"),
 
     # Tuning
     ("COBB Accessport V3", "COBB", "tune-old", "ecu-tune"),
