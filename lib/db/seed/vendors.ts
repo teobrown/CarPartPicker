@@ -47,6 +47,11 @@ const data: V[] = [
     affiliateValue: 'carpartpicker', baseUrl: 'https://flyinmiata.com',
   },
   {
+    name: 'MAPerformance', slug: 'maperformance',
+    affiliateProgram: 'AvantLink', affiliateParam: 'avad',
+    affiliateValue: 'carpartpicker', baseUrl: 'https://www.maperformance.com',
+  },
+  {
     name: 'eBay Motors', slug: 'ebay-motors',
     affiliateProgram: 'eBay Partner Network', affiliateParam: 'campid',
     affiliateValue: 'carpartpicker', baseUrl: 'https://www.ebay.com',

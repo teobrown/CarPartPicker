@@ -17,6 +17,7 @@ from scraper.vendors import (
     prl_motorsports,
     win27,
     flyin_miata,
+    maperformance,
 )
 
 log = logging.getLogger(__name__)
@@ -117,6 +118,12 @@ def run_vendor_from_fixtures(vendor_slug: str, fixtures_dir: Path) -> int:
         for f in sorted(fixtures_dir.glob("product_*.html")):
             html = f.read_text(encoding="utf-8", errors="ignore")
             p = flyin_miata.parse_product_page(html, url=f"file://{f}")
+            if p:
+                parts.append(p)
+    elif vendor_slug == "maperformance":
+        for f in sorted(fixtures_dir.glob("product_*.html")):
+            html = f.read_text(encoding="utf-8", errors="ignore")
+            p = maperformance.parse_product_page(html, url=f"file://{f}")
             if p:
                 parts.append(p)
     else:
@@ -626,6 +633,93 @@ async def _live_scrape_flyin_miata(
     return out
 
 
+# MAPerformance multi-platform seed list. MAP is a Shopify storefront
+# (`/products/<handle>` for PDPs) with no clean per-category collection
+# URL convention — instead they expose ``/search?q=<keyword>&type=product``
+# keyword searches that consistently return 25-48 visible product cards
+# per page (vs ~8 on the per-vehicle ``/pages/<vehicle>-parts-...`` hubs).
+# We anchor each seed on a search URL pinned to a part-category slug,
+# matching the FCP / RSD / FM seed pattern.
+#
+# Probe results (verified 2026-04-30, anchor-scrape unique product hrefs):
+#   gr+corolla+intake      -> 40
+#   gr+corolla+exhaust     -> 48
+#   gr+corolla+coilover    -> 35
+#   gr+corolla+intercooler -> 27
+#   gr86+intake            -> 48
+#   wrx+intake             -> hit 429 during the probe (MAP rate-limits
+#                             aggressively; live scrape uses 1.5s pacing
+#                             and tolerates per-URL failures, so this is
+#                             kept in the list to extend Subaru coverage).
+#
+# RATE LIMIT: MAP returns 429 quickly on `/products.json` and on rapid
+# search requests. ``_live_scrape_maperformance`` uses a 1.5s per-request
+# sleep (vs 1.0s for every other vendor) to stay safe. If MAP starts
+# blanket-429ing in production, raise this to 3.0s.
+MAPERFORMANCE_SEED_CATEGORIES: list[tuple[str, str]] = [
+    ("https://www.maperformance.com/search?q=gr+corolla+intake&type=product", "intake"),
+    ("https://www.maperformance.com/search?q=gr+corolla+exhaust&type=product", "catback"),
+    ("https://www.maperformance.com/search?q=gr+corolla+coilover&type=product", "coilovers"),
+    ("https://www.maperformance.com/search?q=gr+corolla+intercooler&type=product", "intercooler"),
+    ("https://www.maperformance.com/search?q=gr86+intake&type=product", "intake"),
+    ("https://www.maperformance.com/search?q=wrx+intake&type=product", "intake"),
+]
+
+
+async def _live_scrape_maperformance(
+    *, max_products_per_category: int = 25
+) -> list[tuple[NormalizedPart, str]]:
+    """Live-scrape MAPerformance's seeded multi-platform searches.
+
+    Returns a list of ``(part, target_slug)`` tuples. The slug comes from
+    the seed-list entry the product was discovered under.
+
+    NOTE: MAP rate-limits aggressively (429 on `/products.json`, ~1 req/sec
+    cap on category searches). We use a 1.5s per-request sleep — bumped
+    from the 1.0s baseline used by every other vendor — to stay safe.
+    """
+    out: list[tuple[NormalizedPart, str]] = []
+    fetched = 0
+    cats_done = 0
+    async with httpx.AsyncClient(
+        headers=HEADERS, timeout=20.0, follow_redirects=True
+    ) as client:
+        for cat_url, slug in MAPERFORMANCE_SEED_CATEGORIES:
+            try:
+                r = await client.get(cat_url)
+                r.raise_for_status()
+            except httpx.HTTPError:
+                log.exception("category fetch failed: %s", cat_url)
+                continue
+            urls = maperformance.parse_category_page(
+                r.text, base_url="https://www.maperformance.com"
+            )
+            log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
+            for u in urls[:max_products_per_category]:
+                await asyncio.sleep(1.5)  # MAP-specific bump (other vendors: 1.0s)
+                try:
+                    pr = await client.get(u)
+                except httpx.HTTPError:
+                    log.exception("product fetch failed: %s", u)
+                    continue
+                if pr.status_code != 200:
+                    log.warning("product %s returned status %s", u, pr.status_code)
+                    continue
+                p = maperformance.parse_product_page(pr.text, url=u)
+                if p:
+                    out.append((p, slug))
+                fetched += 1
+                if fetched % 25 == 0:
+                    log.info(
+                        "progress: %d products from %d categories",
+                        fetched,
+                        cats_done + 1,
+                    )
+            cats_done += 1
+    log.info("scrape done: %d products from %d categories", fetched, cats_done)
+    return out
+
+
 def run_vendor_live(vendor_slug: str) -> int:
     if vendor_slug == "fcp-euro":
         parts = asyncio.run(_live_scrape_fcp_euro())
@@ -639,6 +733,8 @@ def run_vendor_live(vendor_slug: str) -> int:
         parts = asyncio.run(_live_scrape_27won())
     elif vendor_slug == "flyin-miata":
         parts = asyncio.run(_live_scrape_flyin_miata())
+    elif vendor_slug == "maperformance":
+        parts = asyncio.run(_live_scrape_maperformance())
     else:
         raise ValueError(f"unknown vendor: {vendor_slug}")
     return _process_and_upsert(parts)
