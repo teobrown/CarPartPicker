@@ -47,11 +47,12 @@ _RULES: list[tuple[re.Pattern[str], str]] = [
     # above (catback, axleback, downpipe, front-pipe, etc.) win when both match.
     (re.compile(r"\b(exhaust\s*gasket|exhaust\s*clamp|exhaust\s*stud|exhaust\s*flange|exhaust\s*bolt|exhaust\s*hardware|o2\s*bung)\b", re.I), "exhaust-hardware"),
 
-    # --- Forced induction ---
+    # --- Forced induction / fueling ---
     (re.compile(r"\bintercooler\b", re.I), "intercooler"),
     (re.compile(r"\b(charge\s*pipe|hot\s*pipe|boost\s*pipe)\b", re.I), "charge-pipe"),
     (re.compile(r"\bwastegate\b", re.I), "wastegate"),
     (re.compile(r"\b(diverter\s*valve|blow[\s\-]?off|\bbov\b|\bbpv\b)\b", re.I), "bov"),
+    (re.compile(r"\b(fuel\s*system|fuel\s*pump|fuel\s*injector|fuel\s*rail|fuel\s*pressure|fuel\s*line|fuel\s*regulator)\b", re.I), "fuel-system"),
 
     # --- Tuning ---
     (re.compile(r"\b(accessport|access\s*port|ecu\s*tune|ecu\s*flash|tuner|programmer|flashpro)\b", re.I), "ecu-tune"),
@@ -146,7 +147,7 @@ _VALID_LEAVES: frozenset[str] = frozenset({
     "air-filter", "intake-hose", "maf-housing",
     "catback-exhaust", "axleback-exhaust", "front-pipe", "downpipe",
     "muffler-delete", "exhaust-tip", "o2-sensor", "exhaust-hardware",
-    "intercooler", "charge-pipe", "bov", "wastegate",
+    "intercooler", "charge-pipe", "bov", "wastegate", "fuel-system",
     "ecu-tune", "wideband-gauge",
     "coilovers", "lowering-springs", "sway-bars", "end-links", "control-arms",
     "strut-bar", "camber-kit", "bushings",
@@ -164,7 +165,7 @@ _LLM_SYSTEM_PROMPT = """You are a parser that classifies aftermarket car parts i
 Given a part name and brand, return ONLY the slug — no prose, no JSON, no quotes — selected from this list:
 cold-air-intake, short-ram-intake, ram-air-intake, intake-manifold, air-filter, intake-hose, maf-housing,
 catback-exhaust, axleback-exhaust, front-pipe, downpipe, muffler-delete, exhaust-tip, o2-sensor, exhaust-hardware,
-intercooler, charge-pipe, bov, wastegate, ecu-tune, wideband-gauge,
+intercooler, charge-pipe, bov, wastegate, fuel-system, ecu-tune, wideband-gauge,
 coilovers, lowering-springs, sway-bars, end-links, control-arms, strut-bar, camber-kit, bushings,
 wheels, tires, wheel-spacers, lug-nuts-studs, hub-rings,
 brake-pads, brake-rotors, brake-lines, big-brake-kit,
@@ -246,36 +247,11 @@ def classify(
     brand: str,
     current_slug: Optional[str],
 ) -> Optional[str]:
-    """End-to-end: heuristic first, LLM second, None if both miss.
-
-    The negative-rule blocklist is consulted at BOTH stages — a part name
-    that matches a blocklist pattern stays None even if the LLM would
-    have picked a "closest" leaf. Better to surface in misc than to
-    pollute the wrong leaf with hard-to-spot misclassifications.
-    """
-    haystack = f"{name} {brand}"
-    for pattern in _NEGATIVE_RULES:
-        if pattern.search(haystack):
-            return None
+    """End-to-end: heuristic first, LLM second, None if both miss."""
     out = classify_heuristic(name, brand, current_slug)
     if out is not None:
         return out
     return classify_with_llm(name, brand, current_slug)
-
-
-# Blocklist: parts whose names match these patterns DO NOT map to any leaf
-# in the current taxonomy and should NOT be coerced into the closest match.
-# Force them to None so they fall through to the LLM (which is also
-# instructed to return null for unknowns) and ultimately to misc.
-#
-# Why: a part named "Hondata Fuel System Upgrade" was getting LLM-routed
-# to ecu-tune (the brand cue + "upgrade" verb matched the LLM's idea of
-# "closest"), but a fuel pump / fuel injector / fuel rail isn't an ECU
-# tune. We don't have a fuel-system leaf yet — better to surface in misc
-# for review than to pollute ecu-tune with non-tune parts.
-_NEGATIVE_RULES: list[re.Pattern[str]] = [
-    re.compile(r"\b(fuel\s*system|fuel\s*pump|fuel\s*injector|fuel\s*rail|fuel\s*pressure|fuel\s*line)\b", re.I),
-]
 
 
 def classify_heuristic(
@@ -286,16 +262,11 @@ def classify_heuristic(
     """Map (name + brand + optional current slug) to a new leaf slug, or None.
 
     Rule precedence: the explicit regex rules above run first against
-    `name + ' ' + brand`. Negative rules are checked too — a match there
-    forces None even if a positive rule or prior would have fired. If
-    nothing matches, fall back to the `_PRIOR_DEFAULTS` map keyed by the
-    old slug. Returns None when all checks fail (caller routes to LLM,
-    then misc).
+    `name + ' ' + brand`. If nothing matches, fall back to the
+    `_PRIOR_DEFAULTS` map keyed by the old slug. Returns None when all
+    checks fail (caller routes to LLM, then misc).
     """
     haystack = f"{name} {brand}"
-    for pattern in _NEGATIVE_RULES:
-        if pattern.search(haystack):
-            return None
     for pattern, slug in _RULES:
         if pattern.search(haystack):
             return slug

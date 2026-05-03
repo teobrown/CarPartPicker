@@ -66,6 +66,13 @@ bov:
   - "BOV / BPV"
 wastegate:
   - "Wastegates"
+fuel-system:
+  - "Fuel System"
+  - "Fuel Pumps"
+  - "Fuel Injectors"
+  - "Fuel Rails"
+  - "Fuel Pressure Regulators"
+  - "Fuel Lines"
 
 ecu-tune:
   - "Tuners"

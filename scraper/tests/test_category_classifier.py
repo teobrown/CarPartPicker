@@ -102,15 +102,16 @@ def test_unmatched_returns_none():
     assert classify_heuristic("Random Universal Adapter", "Generic", None) is None
 
 
-def test_fuel_system_parts_are_blocklisted():
-    # "Hondata Fuel System Upgrade" was getting LLM-classified as ecu-tune
-    # because the brand + "upgrade" hint reads tuner-like. We don't have a
-    # fuel-system leaf yet, so block these names from any leaf — the
-    # orchestrator routes None → misc for human review.
-    assert classify_heuristic("2017+ Civic Type R/Integra Type S Hondata Fuel System Upgrade", "27WON", None) is None
-    assert classify_heuristic("PRL High Volume Fuel Pump Kit", "PRL", None) is None
-    assert classify_heuristic("Magnum Fuel Injector Set 1000cc", "Injector Dynamics", None) is None
-    assert classify_heuristic("Honda S2000 Fuel Rail Upgrade", "Skunk2", None) is None
+def test_fuel_system_parts_classify_to_fuel_system_leaf():
+    # User flagged "Hondata Fuel System Upgrade" landing on ecu-tune. Now
+    # we have a real fuel-system leaf — fuel pumps, injectors, rails,
+    # pressure regulators, and lines route there directly via heuristic
+    # so the LLM never has to guess.
+    assert classify_heuristic("2017+ Civic Type R/Integra Type S Hondata Fuel System Upgrade", "27WON", None) == "fuel-system"
+    assert classify_heuristic("PRL High Volume Fuel Pump Kit", "PRL", None) == "fuel-system"
+    assert classify_heuristic("Magnum Fuel Injector Set 1000cc", "Injector Dynamics", None) == "fuel-system"
+    assert classify_heuristic("Honda S2000 Fuel Rail Upgrade", "Skunk2", None) == "fuel-system"
+    assert classify_heuristic("Adjustable Fuel Pressure Regulator", "Aeromotive", None) == "fuel-system"
 
 
 def test_intake_old_prior_was_dropped_to_force_subtype_resolution():

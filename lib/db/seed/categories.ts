@@ -46,6 +46,7 @@ const LEAVES: Array<{ parent: string; name: string; slug: string; hidden?: boole
   { parent: 'forced-induction', name: 'Charge Pipe',  slug: 'charge-pipe' },
   { parent: 'forced-induction', name: 'Blow-Off Valve', slug: 'bov' },
   { parent: 'forced-induction', name: 'Wastegate',    slug: 'wastegate' },
+  { parent: 'forced-induction', name: 'Fuel System',  slug: 'fuel-system' },
 
   // Tuning
   { parent: 'tuning', name: 'ECU Tune',         slug: 'ecu-tune' },

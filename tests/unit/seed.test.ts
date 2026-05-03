@@ -60,16 +60,16 @@ describe('vehicles seed', () => {
 });
 
 describe('categories seed', () => {
-  it('inserts every parent group and leaf (59 rows total)', async () => {
+  it('inserts every parent group and leaf (60 rows total)', async () => {
     const rows = await db.select().from(categories);
-    expect(rows.length).toBe(59);
+    expect(rows.length).toBe(60);
     const slugs = rows.map((r) => r.slug).sort();
     // Sample-check: parents and a representative leaf from each group.
     for (const expected of [
       'intake', 'exhaust', 'forced-induction', 'tuning',
       'suspension', 'wheels-tires', 'brakes', 'body-aero',
       'lighting', 'internal',
-      'cold-air-intake', 'catback-exhaust', 'intercooler',
+      'cold-air-intake', 'catback-exhaust', 'intercooler', 'fuel-system',
       'ecu-tune', 'coilovers', 'wheels', 'brake-pads',
       'front-lip', 'headlights', 'misc',
     ]) {
@@ -87,7 +87,7 @@ describe('categories seed', () => {
     const rows = await db.select().from(categories);
     const byId = new Map(rows.map((r) => [r.id, r]));
     const leaves = rows.filter((r) => r.parentId != null);
-    expect(leaves.length).toBe(49);
+    expect(leaves.length).toBe(50);
     for (const leaf of leaves) {
       expect(byId.get(leaf.parentId!), `leaf ${leaf.slug} -> orphan parent_id ${leaf.parentId}`).toBeDefined();
       expect(byId.get(leaf.parentId!)!.parentId).toBeNull();
