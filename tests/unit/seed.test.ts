@@ -101,8 +101,8 @@ describe('vendors seed', () => {
     const slugs = rows.map((r) => r.slug).sort();
     expect(slugs).toEqual([
       '034motorsport', '27won', 'americanmuscle', 'ebay-motors', 'ecs-tuning',
-      'fcp-euro', 'flyin-miata', 'iag-performance', 'maperformance',
-      'prl-motorsports', 'rallysport-direct', 'steeda', 'summit-racing',
+      'fcp-euro', 'flyin-miata', 'iag-performance', 'k-tuned', 'maperformance',
+      'prl-motorsports', 'rallysport-direct', 'skunk2', 'steeda', 'summit-racing',
     ]);
   });
 });

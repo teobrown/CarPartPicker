@@ -21,6 +21,8 @@ from scraper.vendors import (
     iag_performance,
     steeda,
     motorsport034,
+    k_tuned,
+    skunk2,
 )
 
 log = logging.getLogger(__name__)
@@ -179,6 +181,18 @@ def run_vendor_from_fixtures(vendor_slug: str, fixtures_dir: Path) -> int:
         for f in sorted(fixtures_dir.glob("product_*.html")):
             html = f.read_text(encoding="utf-8", errors="ignore")
             p = motorsport034.parse_product_page(html, url=f"file://{f}")
+            if p:
+                parts.append(p)
+    elif vendor_slug == "k-tuned":
+        for f in sorted(fixtures_dir.glob("product_*.html")):
+            html = f.read_text(encoding="utf-8", errors="ignore")
+            p = k_tuned.parse_product_page(html, url=f"file://{f}")
+            if p:
+                parts.append(p)
+    elif vendor_slug == "skunk2":
+        for f in sorted(fixtures_dir.glob("product_*.html")):
+            html = f.read_text(encoding="utf-8", errors="ignore")
+            p = skunk2.parse_product_page(html, url=f"file://{f}")
             if p:
                 parts.append(p)
     else:
@@ -1081,6 +1095,142 @@ async def _live_scrape_034motorsport(
     return out
 
 
+# K-Tuned — Honda K-series specialist. Shopify storefront, same shape as
+# PRL — every collection page carries a ``var meta`` analytics blob with the
+# full product list. Probed yields (2026-05-03):
+#   coilovers              -> 24
+#   springs                -> ~12
+#   shifters               -> ~25 (mostly RSX / 8th-9th gen Civic)
+#   coolant-housing        -> ~10
+#   chassis-braces         -> ~8
+# Categories with /products/ in the static HTML count as 0 — those pages
+# rely on Shopify analytics + var-meta for the listing.
+K_TUNED_SEED_CATEGORIES: list[tuple[str, str]] = [
+    ("https://www.k-tuned.com/collections/coilovers", "coilovers"),
+    ("https://www.k-tuned.com/collections/springs", "lowering-springs"),
+    ("https://www.k-tuned.com/collections/shifters", "ecu-tune"),
+    ("https://www.k-tuned.com/collections/cooling-system", "intercooler"),
+    ("https://www.k-tuned.com/collections/intake-system", "cold-air-intake"),
+    ("https://www.k-tuned.com/collections/exhaust", "catback-exhaust"),
+    ("https://www.k-tuned.com/collections/chassis-braces", "strut-bar"),
+    ("https://www.k-tuned.com/collections/sway-bars", "sway-bars"),
+    ("https://www.k-tuned.com/collections/11th-gen-civic-22", "cold-air-intake"),
+]
+
+
+async def _live_scrape_k_tuned(
+    *, max_products_per_category: int = 50
+) -> list[tuple[NormalizedPart, str]]:
+    """Live-scrape K-Tuned's seeded Honda categories. Same shape as
+    `_live_scrape_prl_motorsports`. The slug_override anchors each
+    seed URL to a sensible default leaf; the post-scrape reclassifier
+    refines individual products."""
+    out: list[tuple[NormalizedPart, str]] = []
+    fetched = 0
+    cats_done = 0
+    async with httpx.AsyncClient(
+        headers=HEADERS, timeout=20.0, follow_redirects=True
+    ) as client:
+        for cat_url, slug in K_TUNED_SEED_CATEGORIES:
+            try:
+                r = await client.get(cat_url)
+                r.raise_for_status()
+            except httpx.HTTPError:
+                log.exception("category fetch failed: %s", cat_url)
+                continue
+            urls = k_tuned.parse_category_page(
+                r.text, base_url="https://www.k-tuned.com"
+            )
+            log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
+            for u in urls[:max_products_per_category]:
+                await asyncio.sleep(1.0)
+                pr = await _fetch_with_429_retry(client, u)
+                if pr is None:
+                    continue
+                if pr.status_code != 200:
+                    log.warning("product %s returned status %s", u, pr.status_code)
+                    continue
+                p = k_tuned.parse_product_page(pr.text, url=u)
+                if p:
+                    out.append((p, slug))
+                fetched += 1
+                if fetched % 25 == 0:
+                    log.info("progress: %d products from %d categories",
+                             fetched, cats_done + 1)
+            cats_done += 1
+    log.info("scrape done: %d products from %d categories", fetched, cats_done)
+    return out
+
+
+# Skunk2 — Honda specialist (intake manifolds, headers, Civic Si bolt-ons,
+# alpha CAI). Magento storefront with no Shopify-style meta blob and no
+# JSON-LD on PDPs. Discovery uses the search-result page which exposes
+# ~80 product .html anchors per query in static HTML. We seed by car
+# platform + part type so each search returns a clean batch.
+SKUNK2_SEARCH_QUERIES: list[tuple[str, str]] = [
+    ("civic+si",            "cold-air-intake"),
+    ("civic+si+exhaust",    "catback-exhaust"),
+    ("civic+si+header",     "front-pipe"),
+    ("civic+si+manifold",   "intake-manifold"),
+    ("civic+si+coilover",   "coilovers"),
+    ("civic+si+springs",    "lowering-springs"),
+    ("civic+type+r",        "cold-air-intake"),
+    ("integra",             "intake-manifold"),
+]
+
+
+async def _live_scrape_skunk2(
+    *, max_products_per_category: int = 40
+) -> list[tuple[NormalizedPart, str]]:
+    """Live-scrape Skunk2 via the search-result listing. Each query is one
+    seed; the slug_override anchors to a sensible default and the
+    post-scrape reclassifier sorts individual products into the right
+    leaf."""
+    out: list[tuple[NormalizedPart, str]] = []
+    seen: set[str] = set()
+    fetched = 0
+    cats_done = 0
+    async with httpx.AsyncClient(
+        headers=HEADERS, timeout=20.0, follow_redirects=True
+    ) as client:
+        for query, slug in SKUNK2_SEARCH_QUERIES:
+            search_url = (
+                f"https://www.skunk2.com/catalogsearch/result/?q={query}"
+            )
+            try:
+                r = await client.get(search_url)
+                r.raise_for_status()
+            except httpx.HTTPError:
+                log.exception("search fetch failed: %s", search_url)
+                continue
+            urls = skunk2.parse_category_page(
+                r.text, base_url="https://www.skunk2.com"
+            )
+            # Dedup across queries — a single Civic Si manifold shows up under
+            # both "civic si" and "civic si manifold" searches.
+            urls = [u for u in urls if u not in seen]
+            seen.update(urls)
+            log.info("%s [-> %s]: %d new product URLs", search_url, slug, len(urls))
+            for u in urls[:max_products_per_category]:
+                await asyncio.sleep(1.0)
+                pr = await _fetch_with_429_retry(client, u)
+                if pr is None:
+                    continue
+                if pr.status_code != 200:
+                    log.warning("product %s returned status %s", u, pr.status_code)
+                    continue
+                p = skunk2.parse_product_page(pr.text, url=u)
+                if p:
+                    out.append((p, slug))
+                fetched += 1
+                if fetched % 25 == 0:
+                    log.info("progress: %d products from %d searches",
+                             fetched, cats_done + 1)
+            cats_done += 1
+    log.info("scrape done: %d products from %d searches", fetched, cats_done)
+    return out
+
+
 def run_vendor_live(vendor_slug: str) -> int:
     if vendor_slug == "fcp-euro":
         parts = asyncio.run(_live_scrape_fcp_euro())
@@ -1102,6 +1252,10 @@ def run_vendor_live(vendor_slug: str) -> int:
         parts = asyncio.run(_live_scrape_steeda())
     elif vendor_slug == "034motorsport":
         parts = asyncio.run(_live_scrape_034motorsport())
+    elif vendor_slug == "k-tuned":
+        parts = asyncio.run(_live_scrape_k_tuned())
+    elif vendor_slug == "skunk2":
+        parts = asyncio.run(_live_scrape_skunk2())
     else:
         raise ValueError(f"unknown vendor: {vendor_slug}")
     return _process_and_upsert(parts)

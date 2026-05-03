@@ -67,6 +67,16 @@ const data: V[] = [
     affiliateValue: 'carbuildr', baseUrl: 'https://www.034motorsport.com',
   },
   {
+    name: 'K-Tuned', slug: 'k-tuned',
+    affiliateProgram: 'AvantLink', affiliateParam: 'avad',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.k-tuned.com',
+  },
+  {
+    name: 'Skunk2 Racing', slug: 'skunk2',
+    affiliateProgram: 'Direct', affiliateParam: 'aff',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.skunk2.com',
+  },
+  {
     name: 'eBay Motors', slug: 'ebay-motors',
     affiliateProgram: 'eBay Partner Network', affiliateParam: 'campid',
     affiliateValue: 'carbuildr', baseUrl: 'https://www.ebay.com',
