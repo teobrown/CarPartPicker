@@ -102,6 +102,17 @@ def test_unmatched_returns_none():
     assert classify_heuristic("Random Universal Adapter", "Generic", None) is None
 
 
+def test_fuel_system_parts_are_blocklisted():
+    # "Hondata Fuel System Upgrade" was getting LLM-classified as ecu-tune
+    # because the brand + "upgrade" hint reads tuner-like. We don't have a
+    # fuel-system leaf yet, so block these names from any leaf — the
+    # orchestrator routes None → misc for human review.
+    assert classify_heuristic("2017+ Civic Type R/Integra Type S Hondata Fuel System Upgrade", "27WON", None) is None
+    assert classify_heuristic("PRL High Volume Fuel Pump Kit", "PRL", None) is None
+    assert classify_heuristic("Magnum Fuel Injector Set 1000cc", "Injector Dynamics", None) is None
+    assert classify_heuristic("Honda S2000 Fuel Rail Upgrade", "Skunk2", None) is None
+
+
 def test_intake_old_prior_was_dropped_to_force_subtype_resolution():
     # Old `intake` leaf was an aggregation of 7 new leaves. Codex flagged 53.7%
     # of `intake-old` parts as falling through to cold-air-intake by default
