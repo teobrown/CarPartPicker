@@ -16,6 +16,7 @@ from scraper.vendors import (
     rallysport_direct,
     prl_motorsports,
     win27,
+    flyin_miata,
 )
 
 log = logging.getLogger(__name__)
@@ -110,6 +111,12 @@ def run_vendor_from_fixtures(vendor_slug: str, fixtures_dir: Path) -> int:
         for f in sorted(fixtures_dir.glob("product_*.html")):
             html = f.read_text(encoding="utf-8", errors="ignore")
             p = win27.parse_product_page(html, url=f"file://{f}")
+            if p:
+                parts.append(p)
+    elif vendor_slug == "flyin-miata":
+        for f in sorted(fixtures_dir.glob("product_*.html")):
+            html = f.read_text(encoding="utf-8", errors="ignore")
+            p = flyin_miata.parse_product_page(html, url=f"file://{f}")
             if p:
                 parts.append(p)
     else:
@@ -530,6 +537,95 @@ async def _live_scrape_27won(
     return out
 
 
+# Flyin' Miata Mazda MX-5 category seed list. FM is a Shopify storefront
+# (`/collections/<chassis>-<system>[-<sub>]` for category pages,
+# `/products/<handle>` for PDPs) — the entire catalog is fitted to NA / NB
+# / NC / ND chassis, so we seed per-chassis sub-collections that cleanly
+# map to a single internal slug. We deliberately skip mixed bins like
+# `*-handling-springs-shocks-swaybars` (springs + shocks + swaybars in one
+# collection — would need name-keyword routing to disambiguate) and
+# `*-body-lighting` (head + tail + turn signal lights together).
+#
+# Probe results (anchor count, FM's ``var meta`` blob is empty so this is
+# the per-page visible product count, not the full collection size):
+#   na/nb/nc/nd-handling-coilovers  -> 11 / 9  / 2 / 2  (coilovers)
+#   na/nb/nc/nd-powertrain-exhaust  -> 16 / 16 / 8 / 10 (catback)
+#   na/nb/nc/nd-powertrain-intake   -> 8  / 4  / 1 / 2  (intake)
+#   na/nb/nc/nd-wheels              -> 16 / 16 / 11/ 15 (wheels)
+FLYIN_MIATA_SEED_CATEGORIES: list[tuple[str, str]] = [
+    # NA (1990-1997)
+    ("https://flyinmiata.com/collections/na-handling-coilovers", "coilovers"),
+    ("https://flyinmiata.com/collections/na-powertrain-exhaust", "catback"),
+    ("https://flyinmiata.com/collections/na-powertrain-intake", "intake"),
+    ("https://flyinmiata.com/collections/na-wheels", "wheels"),
+    # NB (1999-2005)
+    ("https://flyinmiata.com/collections/nb-handling-coilovers", "coilovers"),
+    ("https://flyinmiata.com/collections/nb-powertrain-exhaust", "catback"),
+    ("https://flyinmiata.com/collections/nb-powertrain-intake", "intake"),
+    ("https://flyinmiata.com/collections/nb-wheels", "wheels"),
+    # NC (2006-2015)
+    ("https://flyinmiata.com/collections/nc-handling-coilovers", "coilovers"),
+    ("https://flyinmiata.com/collections/nc-powertrain-exhaust", "catback"),
+    ("https://flyinmiata.com/collections/nc-powertrain-intake", "intake"),
+    ("https://flyinmiata.com/collections/nc-wheels", "wheels"),
+    # ND (2016-now)
+    ("https://flyinmiata.com/collections/nd-handling-coilovers", "coilovers"),
+    ("https://flyinmiata.com/collections/nd-powertrain-exhaust", "catback"),
+    ("https://flyinmiata.com/collections/nd-powertrain-intake", "intake"),
+    ("https://flyinmiata.com/collections/nd-wheels", "wheels"),
+]
+
+
+async def _live_scrape_flyin_miata(
+    *, max_products_per_category: int = 25
+) -> list[tuple[NormalizedPart, str]]:
+    """Live-scrape Flyin' Miata's seeded NA/NB/NC/ND categories.
+
+    Returns a list of ``(part, target_slug)`` tuples. The slug comes from
+    the seed-list entry the product was discovered under.
+    """
+    out: list[tuple[NormalizedPart, str]] = []
+    fetched = 0
+    cats_done = 0
+    async with httpx.AsyncClient(
+        headers=HEADERS, timeout=20.0, follow_redirects=True
+    ) as client:
+        for cat_url, slug in FLYIN_MIATA_SEED_CATEGORIES:
+            try:
+                r = await client.get(cat_url)
+                r.raise_for_status()
+            except httpx.HTTPError:
+                log.exception("category fetch failed: %s", cat_url)
+                continue
+            urls = flyin_miata.parse_category_page(
+                r.text, base_url="https://flyinmiata.com"
+            )
+            log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
+            for u in urls[:max_products_per_category]:
+                await asyncio.sleep(1.0)  # ~1 req/sec rate limit
+                try:
+                    pr = await client.get(u)
+                except httpx.HTTPError:
+                    log.exception("product fetch failed: %s", u)
+                    continue
+                if pr.status_code != 200:
+                    log.warning("product %s returned status %s", u, pr.status_code)
+                    continue
+                p = flyin_miata.parse_product_page(pr.text, url=u)
+                if p:
+                    out.append((p, slug))
+                fetched += 1
+                if fetched % 25 == 0:
+                    log.info(
+                        "progress: %d products from %d categories",
+                        fetched,
+                        cats_done + 1,
+                    )
+            cats_done += 1
+    log.info("scrape done: %d products from %d categories", fetched, cats_done)
+    return out
+
+
 def run_vendor_live(vendor_slug: str) -> int:
     if vendor_slug == "fcp-euro":
         parts = asyncio.run(_live_scrape_fcp_euro())
@@ -541,6 +637,8 @@ def run_vendor_live(vendor_slug: str) -> int:
         parts = asyncio.run(_live_scrape_prl_motorsports())
     elif vendor_slug == "27won":
         parts = asyncio.run(_live_scrape_27won())
+    elif vendor_slug == "flyin-miata":
+        parts = asyncio.run(_live_scrape_flyin_miata())
     else:
         raise ValueError(f"unknown vendor: {vendor_slug}")
     return _process_and_upsert(parts)

@@ -42,6 +42,11 @@ const data: V[] = [
     affiliateValue: 'carpartpicker', baseUrl: 'https://store.27won.com',
   },
   {
+    name: 'Flyin Miata', slug: 'flyin-miata',
+    affiliateProgram: 'AvantLink', affiliateParam: 'avad',
+    affiliateValue: 'carpartpicker', baseUrl: 'https://flyinmiata.com',
+  },
+  {
     name: 'eBay Motors', slug: 'ebay-motors',
     affiliateProgram: 'eBay Partner Network', affiliateParam: 'campid',
     affiliateValue: 'carpartpicker', baseUrl: 'https://www.ebay.com',
