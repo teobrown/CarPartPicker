@@ -28,6 +28,40 @@ USER_AGENT = "CarPartPickerBot/0.1 (+mailto:teobrown1@gmail.com)"
 HEADERS = {"User-Agent": USER_AGENT, "From": "teobrown1@gmail.com"}
 
 
+async def _fetch_with_429_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    backoff_seconds: float = 15.0,
+) -> httpx.Response | None:
+    """GET ``url`` with one sleep+retry on a 429 response.
+
+    Returns the final ``Response`` (which may itself be 429 or other
+    non-200) or ``None`` if both attempts raised an ``httpx.HTTPError``.
+    Caller still inspects ``status_code`` and decides whether to keep
+    or skip the result.
+
+    Why this exists: vendor sites sporadically 429 single product URLs
+    even at our normal pacing (sub-domain rate limit, anti-bot probes).
+    A single 15s nap clears most of these. Persistent 429s still get
+    skipped per the existing per-URL tolerance.
+    """
+    try:
+        r = await client.get(url)
+    except httpx.HTTPError:
+        log.exception("product fetch failed: %s", url)
+        return None
+    if r.status_code != 429:
+        return r
+    log.info("429 from %s — sleeping %.1fs before retry", url, backoff_seconds)
+    await asyncio.sleep(backoff_seconds)
+    try:
+        return await client.get(url)
+    except httpx.HTTPError:
+        log.exception("product fetch retry failed: %s", url)
+        return None
+
+
 def _process_and_upsert(
     parts: Iterable[tuple[NormalizedPart, str | None] | NormalizedPart],
 ) -> int:
@@ -198,10 +232,8 @@ async def _live_scrape_fcp_euro(
             log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
             for u in urls[:max_products_per_category]:
                 await asyncio.sleep(1.0)  # ~1 req/sec rate limit
-                try:
-                    pr = await client.get(u)
-                except httpx.HTTPError:
-                    log.exception("product fetch failed: %s", u)
+                pr = await _fetch_with_429_retry(client, u)
+                if pr is None:
                     continue
                 if pr.status_code != 200:
                     log.warning("product %s returned status %s", u, pr.status_code)
@@ -240,7 +272,7 @@ AMERICANMUSCLE_SEED_CATEGORIES: list[tuple[str, str]] = [
 
 
 async def _live_scrape_americanmuscle(
-    *, max_products_per_category: int = 25
+    *, max_products_per_category: int = 50
 ) -> list[tuple[NormalizedPart, str]]:
     """Live-scrape AmericanMuscle's seeded Mustang categories.
 
@@ -266,10 +298,8 @@ async def _live_scrape_americanmuscle(
             log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
             for u in urls[:max_products_per_category]:
                 await asyncio.sleep(1.0)  # ~1 req/sec rate limit
-                try:
-                    pr = await client.get(u)
-                except httpx.HTTPError:
-                    log.exception("product fetch failed: %s", u)
+                pr = await _fetch_with_429_retry(client, u)
+                if pr is None:
                     continue
                 if pr.status_code != 200:
                     log.warning("product %s returned status %s", u, pr.status_code)
@@ -311,7 +341,7 @@ RALLYSPORT_DIRECT_SEED_CATEGORIES: list[tuple[str, str]] = [
 
 
 async def _live_scrape_rallysport_direct(
-    *, max_products_per_category: int = 25
+    *, max_products_per_category: int = 50
 ) -> list[tuple[NormalizedPart, str]]:
     """Live-scrape RSD's seeded Subaru categories.
 
@@ -337,10 +367,8 @@ async def _live_scrape_rallysport_direct(
             log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
             for u in urls[:max_products_per_category]:
                 await asyncio.sleep(1.0)  # ~1 req/sec rate limit
-                try:
-                    pr = await client.get(u)
-                except httpx.HTTPError:
-                    log.exception("product fetch failed: %s", u)
+                pr = await _fetch_with_429_retry(client, u)
+                if pr is None:
                     continue
                 if pr.status_code != 200:
                     log.warning("product %s returned status %s", u, pr.status_code)
@@ -382,7 +410,7 @@ PRL_MOTORSPORTS_SEED_CATEGORIES: list[tuple[str, str]] = [
 
 
 async def _live_scrape_prl_motorsports(
-    *, max_products_per_category: int = 25
+    *, max_products_per_category: int = 50
 ) -> list[tuple[NormalizedPart, str]]:
     """Live-scrape PRL's seeded Honda Civic categories.
 
@@ -408,10 +436,8 @@ async def _live_scrape_prl_motorsports(
             log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
             for u in urls[:max_products_per_category]:
                 await asyncio.sleep(1.0)  # ~1 req/sec rate limit
-                try:
-                    pr = await client.get(u)
-                except httpx.HTTPError:
-                    log.exception("product fetch failed: %s", u)
+                pr = await _fetch_with_429_retry(client, u)
+                if pr is None:
                     continue
                 if pr.status_code != 200:
                     log.warning("product %s returned status %s", u, pr.status_code)
@@ -499,7 +525,7 @@ def _27won_slug_from_name(name: str) -> str | None:
 
 
 async def _live_scrape_27won(
-    *, max_products_per_category: int = 25
+    *, max_products_per_category: int = 50
 ) -> list[tuple[NormalizedPart, str]]:
     """Live-scrape 27WON's seeded Honda chassis pages.
 
@@ -533,10 +559,8 @@ async def _live_scrape_27won(
                     continue
                 seen_urls.add(u)
                 await asyncio.sleep(1.0)  # ~1 req/sec rate limit
-                try:
-                    pr = await client.get(u)
-                except httpx.HTTPError:
-                    log.exception("product fetch failed: %s", u)
+                pr = await _fetch_with_429_retry(client, u)
+                if pr is None:
                     continue
                 if pr.status_code != 200:
                     log.warning("product %s returned status %s", u, pr.status_code)
@@ -605,7 +629,7 @@ FLYIN_MIATA_SEED_CATEGORIES: list[tuple[str, str]] = [
 
 
 async def _live_scrape_flyin_miata(
-    *, max_products_per_category: int = 25
+    *, max_products_per_category: int = 50
 ) -> list[tuple[NormalizedPart, str]]:
     """Live-scrape Flyin' Miata's seeded NA/NB/NC/ND categories.
 
@@ -631,10 +655,8 @@ async def _live_scrape_flyin_miata(
             log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
             for u in urls[:max_products_per_category]:
                 await asyncio.sleep(1.0)  # ~1 req/sec rate limit
-                try:
-                    pr = await client.get(u)
-                except httpx.HTTPError:
-                    log.exception("product fetch failed: %s", u)
+                pr = await _fetch_with_429_retry(client, u)
+                if pr is None:
                     continue
                 if pr.status_code != 200:
                     log.warning("product %s returned status %s", u, pr.status_code)
@@ -668,22 +690,22 @@ async def _live_scrape_flyin_miata(
 #   gr+corolla+coilover    -> 35
 #   gr+corolla+intercooler -> 27
 #   gr86+intake            -> 48
-#   wrx+intake             -> hit 429 during the probe (MAP rate-limits
-#                             aggressively; live scrape uses 1.5s pacing
-#                             and tolerates per-URL failures, so this is
-#                             kept in the list to extend Subaru coverage).
+#   wrx+intake             -> 429s reliably (probe and 2026-05-02 live
+#                             run both got banned on this category;
+#                             dropped to keep the run from blanket-429'ing
+#                             after a partial harvest). Subaru WRX
+#                             coverage comes from RallySport-Direct + IAG.
 #
 # RATE LIMIT: MAP returns 429 quickly on `/products.json` and on rapid
-# search requests. ``_live_scrape_maperformance`` uses a 1.5s per-request
-# sleep (vs 1.0s for every other vendor) to stay safe. If MAP starts
-# blanket-429ing in production, raise this to 3.0s.
+# search requests. ``_live_scrape_maperformance`` uses a 3.0s per-request
+# sleep (vs 1.0s for every other vendor) — bumped from 1.5s after the
+# 2026-05-01 run was blanket-429'd. Don't lower without re-probing.
 MAPERFORMANCE_SEED_CATEGORIES: list[tuple[str, str]] = [
     ("https://www.maperformance.com/search?q=gr+corolla+intake&type=product", "intake"),
     ("https://www.maperformance.com/search?q=gr+corolla+exhaust&type=product", "catback"),
     ("https://www.maperformance.com/search?q=gr+corolla+coilover&type=product", "coilovers"),
     ("https://www.maperformance.com/search?q=gr+corolla+intercooler&type=product", "intercooler"),
     ("https://www.maperformance.com/search?q=gr86+intake&type=product", "intake"),
-    ("https://www.maperformance.com/search?q=wrx+intake&type=product", "intake"),
 ]
 
 
@@ -696,8 +718,8 @@ async def _live_scrape_maperformance(
     the seed-list entry the product was discovered under.
 
     NOTE: MAP rate-limits aggressively (429 on `/products.json`, ~1 req/sec
-    cap on category searches). We use a 1.5s per-request sleep — bumped
-    from the 1.0s baseline used by every other vendor — to stay safe.
+    cap on category searches). We use a 3.0s per-request sleep — bumped
+    from 1.5s after a 429 blanket-ban during the 2026-05-01 first run.
     """
     out: list[tuple[NormalizedPart, str]] = []
     fetched = 0
@@ -717,11 +739,9 @@ async def _live_scrape_maperformance(
             )
             log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
             for u in urls[:max_products_per_category]:
-                await asyncio.sleep(1.5)  # MAP-specific bump (other vendors: 1.0s)
-                try:
-                    pr = await client.get(u)
-                except httpx.HTTPError:
-                    log.exception("product fetch failed: %s", u)
+                await asyncio.sleep(3.0)  # MAP-specific bump (other vendors: 1.0s); 1.5s blanket-429'd on 2026-05-01
+                pr = await _fetch_with_429_retry(client, u)
+                if pr is None:
                     continue
                 if pr.status_code != 200:
                     log.warning("product %s returned status %s", u, pr.status_code)
@@ -773,7 +793,7 @@ IAG_PERFORMANCE_SEED_CATEGORIES: list[tuple[str, str]] = [
 
 
 async def _live_scrape_iag_performance(
-    *, max_products_per_category: int = 25
+    *, max_products_per_category: int = 50
 ) -> list[tuple[NormalizedPart, str]]:
     """Live-scrape IAG's seeded Subaru-deep categories.
 
@@ -801,10 +821,8 @@ async def _live_scrape_iag_performance(
             log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
             for u in urls[:max_products_per_category]:
                 await asyncio.sleep(1.0)  # ~1 req/sec rate limit
-                try:
-                    pr = await client.get(u)
-                except httpx.HTTPError:
-                    log.exception("product fetch failed: %s", u)
+                pr = await _fetch_with_429_retry(client, u)
+                if pr is None:
                     continue
                 if pr.status_code != 200:
                     log.warning("product %s returned status %s", u, pr.status_code)
@@ -896,7 +914,7 @@ STEEDA_SEED_CATEGORIES: list[tuple[str, str]] = [
 
 
 async def _live_scrape_steeda(
-    *, max_products_per_category: int = 25
+    *, max_products_per_category: int = 50
 ) -> list[tuple[NormalizedPart, str]]:
     """Live-scrape Steeda's seeded Mustang categories.
 
@@ -931,10 +949,8 @@ async def _live_scrape_steeda(
             log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
             for u in urls[:max_products_per_category]:
                 await asyncio.sleep(1.0)  # ~1 req/sec rate limit
-                try:
-                    pr = await client.get(u)
-                except httpx.HTTPError:
-                    log.exception("product fetch failed: %s", u)
+                pr = await _fetch_with_429_retry(client, u)
+                if pr is None:
                     continue
                 if pr.status_code != 200:
                     log.warning("product %s returned status %s", u, pr.status_code)
@@ -1033,10 +1049,8 @@ async def _live_scrape_034motorsport(
             log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
             for u in urls[:max_products_per_category]:
                 await asyncio.sleep(1.0)  # ~1 req/sec rate limit
-                try:
-                    pr = await client.get(u)
-                except httpx.HTTPError:
-                    log.exception("product fetch failed: %s", u)
+                pr = await _fetch_with_429_retry(client, u)
+                if pr is None:
                     continue
                 if pr.status_code != 200:
                     log.warning("product %s returned status %s", u, pr.status_code)
