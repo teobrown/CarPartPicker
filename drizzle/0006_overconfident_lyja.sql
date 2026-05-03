@@ -1,0 +1,1 @@
+ALTER TABLE "categories" ADD COLUMN "hidden_from_picker" boolean DEFAULT false NOT NULL;

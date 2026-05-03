@@ -53,6 +53,7 @@ export const categories = pgTable('categories', {
   slug: varchar('slug', { length: 64 }).notNull().unique(),
   parentId: integer('parent_id').references((): AnyPgColumn => categories.id),
   description: text('description'),
+  hiddenFromPicker: boolean('hidden_from_picker').default(false).notNull(),
 });
 
 export const vendors = pgTable('vendors', {
