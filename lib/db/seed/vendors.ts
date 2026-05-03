@@ -32,6 +32,11 @@ const data: V[] = [
     affiliateValue: 'carpartpicker', baseUrl: 'https://www.rallysportdirect.com',
   },
   {
+    name: 'PRL Motorsports', slug: 'prl-motorsports',
+    affiliateProgram: 'AvantLink', affiliateParam: 'avad',
+    affiliateValue: 'carpartpicker', baseUrl: 'https://www.prlmotorsports.com',
+  },
+  {
     name: 'eBay Motors', slug: 'ebay-motors',
     affiliateProgram: 'eBay Partner Network', affiliateParam: 'campid',
     affiliateValue: 'carpartpicker', baseUrl: 'https://www.ebay.com',
