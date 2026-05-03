@@ -36,7 +36,7 @@ beforeAll(async () => {
     .from(categories)
     .where(eq(categories.slug, 'intake'))
     .limit(1);
-  // Use FCP Euro: affiliateParam='avad', affiliateValue='carpartpicker'.
+  // Use FCP Euro: affiliateParam='avad', affiliateValue='carbuildr'.
   const [v] = await db
     .select()
     .from(vendors)
@@ -130,8 +130,8 @@ describe('GET /go/[listingId]', () => {
     expect(loc).toBeTruthy();
     const target = new URL(loc!);
     expect(target.origin + target.pathname).toBe('https://www.fcpeuro.com/product');
-    // FCP Euro vendor: affiliateParam='avad', affiliateValue='carpartpicker'
-    expect(target.searchParams.get('avad')).toBe('carpartpicker');
+    // FCP Euro vendor: affiliateParam='avad', affiliateValue='carbuildr'
+    expect(target.searchParams.get('avad')).toBe('carbuildr');
 
     // Wait briefly for the fire-and-forget insert to land.
     await new Promise((r) => setTimeout(r, 250));

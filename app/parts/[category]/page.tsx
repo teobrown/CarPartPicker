@@ -24,12 +24,12 @@ export async function generateMetadata({
   }
   const description = `${known.partCount} ${known.name.toLowerCase()} part${
     known.partCount === 1 ? "" : "s"
-  } indexed in the CarPartPicker registry.`;
+  } indexed in the Carbuildr registry.`;
   return {
     title: known.name,
     description,
     openGraph: {
-      title: `${known.name} · CarPartPicker`,
+      title: `${known.name} · Carbuildr`,
       description,
       type: "website",
     },

@@ -15,13 +15,13 @@ export async function generateMetadata(): Promise<Metadata> {
   const stats = await getCatalogStats();
   const description =
     stats.partCount === 0
-      ? "Browse the CarPartPicker parts registry. Catalog grows as scrapers run."
+      ? "Browse the Carbuildr parts registry. Catalog grows as scrapers run."
       : `${stats.partCount} parts indexed across ${stats.vendorCount} vendors. Filter by category or browse the full registry.`;
   return {
     title: "Catalog",
     description,
     openGraph: {
-      title: "Catalog · CarPartPicker",
+      title: "Catalog · Carbuildr",
       description,
       type: "website",
     },

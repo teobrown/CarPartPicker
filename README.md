@@ -1,10 +1,10 @@
-# CarPartPicker
+# Carbuildr
 
 PCPartPicker for tuner cars. Pick your make/model/year, get a compatibility-checked catalog of bolt-on, suspension, wheel, and body mods, and assemble a build with affiliate buy-through links.
 
 **Phase 0 status:** Foundation. Database, seeds, FCP Euro scraper, and read-only catalog work. Compatibility engine, build editor, affiliate redirector, and additional vendors come in Phases 1-2.
 
-See [`docs/specs/2026-04-30-carpartpicker-design.md`](docs/specs/2026-04-30-carpartpicker-design.md) for the full design and [`docs/plans/2026-04-30-carpartpicker-phase-0-foundation.md`](docs/plans/2026-04-30-carpartpicker-phase-0-foundation.md) for the Phase 0 implementation plan.
+See [`docs/specs/2026-04-30-carbuildr-design.md`](docs/specs/2026-04-30-carbuildr-design.md) for the full design and [`docs/plans/2026-04-30-carbuildr-phase-0-foundation.md`](docs/plans/2026-04-30-carbuildr-phase-0-foundation.md) for the Phase 0 implementation plan.
 
 ## Stack
 
@@ -87,7 +87,7 @@ uv run python -m scraper fcp-euro
 ## Project layout
 
 ```
-CarPartPicker/
+Carbuildr/
 ├── app/                              # Next.js App Router
 │   ├── parts/                        # /parts catalog index + /parts/[category]
 │   ├── part/[brand]/[model]/         # Part detail page

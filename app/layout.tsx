@@ -17,8 +17,8 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "CarPartPicker — Pit Wall",
-    template: "%s · CarPartPicker",
+    default: "Carbuildr — Pit Wall",
+    template: "%s · Carbuildr",
   },
   description:
     "PCPartPicker for tuner cars. Compatibility-checked mod builds with affiliate buy-through.",
@@ -26,15 +26,15 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   ),
   openGraph: {
-    title: "CarPartPicker — Pit Wall",
+    title: "Carbuildr — Pit Wall",
     description:
       "PCPartPicker for tuner cars. Compatibility-checked mod builds with affiliate buy-through.",
     type: "website",
-    siteName: "CarPartPicker",
+    siteName: "Carbuildr",
   },
   twitter: {
     card: "summary_large_image",
-    title: "CarPartPicker — Pit Wall",
+    title: "Carbuildr — Pit Wall",
     description:
       "PCPartPicker for tuner cars. Compatibility-checked mod builds with affiliate buy-through.",
   },

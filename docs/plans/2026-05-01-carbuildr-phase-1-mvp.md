@@ -1,4 +1,4 @@
-# CarPartPicker — Phase 1 MVP Implementation Plan
+# Carbuildr — Phase 1 MVP Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack additions:** `nanoid` for slug generation. No new infra otherwise. `next/headers` for cookie reads in server components.
 
-**Reference:** `docs/specs/2026-04-30-carpartpicker-design.md` §5–§7.
+**Reference:** `docs/specs/2026-04-30-carbuildr-design.md` §5–§7.
 
 ---
 
@@ -1389,11 +1389,11 @@ Update `app/layout.tsx` `metadata`:
 
 ```ts
 export const metadata: Metadata = {
-  title: { default: 'CarPartPicker', template: '%s · CarPartPicker' },
+  title: { default: 'Carbuildr', template: '%s · Carbuildr' },
   description: 'PCPartPicker for tuner cars. Compatibility-checked mod builds with affiliate buy-through.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
   openGraph: {
-    title: 'CarPartPicker',
+    title: 'Carbuildr',
     description: 'PCPartPicker for tuner cars.',
     type: 'website',
   },

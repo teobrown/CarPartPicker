@@ -1,4 +1,4 @@
-# CarPartPicker — Scraper
+# Carbuildr — Scraper
 
 Python service that scrapes mod retailers and upserts normalized parts into Postgres.
 

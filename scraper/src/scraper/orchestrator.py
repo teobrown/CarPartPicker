@@ -24,7 +24,7 @@ from scraper.vendors import (
 )
 
 log = logging.getLogger(__name__)
-USER_AGENT = "CarPartPickerBot/0.1 (+mailto:teobrown1@gmail.com)"
+USER_AGENT = "CarbuildrBot/0.1 (+mailto:teobrown1@gmail.com)"
 HEADERS = {"User-Agent": USER_AGENT, "From": "teobrown1@gmail.com"}
 
 

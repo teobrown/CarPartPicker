@@ -1,4 +1,4 @@
-# CarPartPicker — Phase 0 (Foundation) Implementation Plan
+# Carbuildr — Phase 0 (Foundation) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -15,12 +15,12 @@
 - Testing (Python): pytest with recorded HTML fixtures
 - CI / cron: GitHub Actions
 
-**Reference:** `docs/specs/2026-04-30-carpartpicker-design.md`
+**Reference:** `docs/specs/2026-04-30-carbuildr-design.md`
 
 **Repository layout this plan produces:**
 
 ```
-CarPartPicker/
+Carbuildr/
 ├── app/                              # Next.js app router
 │   ├── parts/page.tsx                # catalog index
 │   ├── parts/[category]/page.tsx     # per-category listing
@@ -87,7 +87,7 @@ CarPartPicker/
 - [ ] **Step 1.1: Initialize git repo and base structure**
 
 ```bash
-cd C:/Users/teobr/Downloads/ClaudeProjects/CarPartPicker
+cd C:/Users/teobr/Downloads/ClaudeProjects/Carbuildr
 git init
 echo "node_modules/
 .next/
@@ -117,7 +117,7 @@ When prompted "directory not empty," confirm yes. Replace the generated `app/pag
 export default function Home() {
   return (
     <main className="p-8">
-      <h1 className="text-2xl font-bold">CarPartPicker</h1>
+      <h1 className="text-2xl font-bold">Carbuildr</h1>
       <p className="text-sm opacity-70">Phase 0 foundation. Visit /parts.</p>
     </main>
   );
@@ -135,7 +135,7 @@ services:
     environment:
       POSTGRES_USER: cpp
       POSTGRES_PASSWORD: cpp
-      POSTGRES_DB: carpartpicker
+      POSTGRES_DB: carbuildr
     ports:
       - "5432:5432"
     volumes:
@@ -147,7 +147,7 @@ volumes:
 
 ```bash
 # .env.example
-DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carpartpicker
+DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carbuildr
 ```
 
 ```bash
@@ -166,7 +166,7 @@ cd scraper
 ```toml
 # scraper/pyproject.toml
 [project]
-name = "carpartpicker-scraper"
+name = "carbuildr-scraper"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
@@ -898,32 +898,32 @@ const data: V[] = [
   {
     name: 'Summit Racing', slug: 'summit-racing',
     affiliateProgram: 'Impact Radius', affiliateParam: 'utm_source',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.summitracing.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.summitracing.com',
   },
   {
     name: 'FCP Euro', slug: 'fcp-euro',
     affiliateProgram: 'AvantLink', affiliateParam: 'avad',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.fcpeuro.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.fcpeuro.com',
   },
   {
     name: 'ECS Tuning', slug: 'ecs-tuning',
     affiliateProgram: 'AvantLink', affiliateParam: 'avad',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.ecstuning.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.ecstuning.com',
   },
   {
     name: 'AmericanMuscle', slug: 'americanmuscle',
     affiliateProgram: 'AmericanMuscle Affiliate', affiliateParam: 'aff',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.americanmuscle.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.americanmuscle.com',
   },
   {
     name: 'RallySport Direct', slug: 'rallysport-direct',
     affiliateProgram: 'ShareASale', affiliateParam: 'sscid',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.rallysportdirect.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.rallysportdirect.com',
   },
   {
     name: 'eBay Motors', slug: 'ebay-motors',
     affiliateProgram: 'eBay Partner Network', affiliateParam: 'campid',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.ebay.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.ebay.com',
   },
 ];
 
@@ -1369,7 +1369,7 @@ git commit -m "feat(scraper): add YAML-backed category mapper with fuzzy fallbac
 
 ## Task 9: Python — Summit Racing scraper module against fixtures
 
-> **Pivot (2026-04-30):** First vendor changed from Summit Racing to **FCP Euro** after reconnaissance found Summit's product detail pages return a 4 KB Imperva Incapsula challenge to non-browser HTTP clients (status 200 on listing pages but the per-product PDPs are firewalled). FCP Euro serves fully-rendered HTML with a JSON-LD `Product` block on every product page, no anti-bot interstitial against `CarPartPickerBot/0.1`. See spec §4 update for the revised vendor priority. The actual files shipped under this task are:
+> **Pivot (2026-04-30):** First vendor changed from Summit Racing to **FCP Euro** after reconnaissance found Summit's product detail pages return a 4 KB Imperva Incapsula challenge to non-browser HTTP clients (status 200 on listing pages but the per-product PDPs are firewalled). FCP Euro serves fully-rendered HTML with a JSON-LD `Product` block on every product page, no anti-bot interstitial against `CarbuildrBot/0.1`. See spec §4 update for the revised vendor priority. The actual files shipped under this task are:
 >
 > - `scraper/src/scraper/vendors/fcp_euro.py`
 > - `scraper/tests/fixtures/fcp-euro/category_air-intake.html`
@@ -1620,7 +1620,7 @@ def test_upsert_is_idempotent(conn):
 - [ ] **Step 10.2: Run test, verify it fails**
 
 ```bash
-cd scraper && DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carpartpicker uv run pytest tests/test_upsert.py -v
+cd scraper && DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carbuildr uv run pytest tests/test_upsert.py -v
 ```
 
 Expected: FAIL.
@@ -1735,7 +1735,7 @@ def upsert_part(
 # from project root
 npm run db:seed:vehicles
 cd scraper
-DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carpartpicker uv run pytest tests/test_upsert.py -v
+DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carbuildr uv run pytest tests/test_upsert.py -v
 ```
 
 Expected: 2 PASS.
@@ -1785,7 +1785,7 @@ def test_orchestrator_imports_summit_fixtures_into_db():
 
 - [ ] **Step 11.2: Run test, verify it fails**
 
-Run: `cd scraper && DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carpartpicker uv run pytest tests/test_orchestrator.py -v`
+Run: `cd scraper && DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carbuildr uv run pytest tests/test_orchestrator.py -v`
 Expected: FAIL.
 
 - [ ] **Step 11.3: Write the orchestrator**
@@ -1806,7 +1806,7 @@ from scraper.normalized import NormalizedPart
 from scraper.vendors import summit_racing
 
 log = logging.getLogger(__name__)
-USER_AGENT = "CarPartPickerBot/0.1 (+mailto:teobrown1@gmail.com)"
+USER_AGENT = "CarbuildrBot/0.1 (+mailto:teobrown1@gmail.com)"
 
 
 def _process_and_upsert(parts: Iterable[NormalizedPart]) -> int:
@@ -1896,7 +1896,7 @@ if __name__ == "__main__":
 - [ ] **Step 11.4: Run test, verify it passes**
 
 ```bash
-cd scraper && DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carpartpicker uv run pytest tests/test_orchestrator.py -v
+cd scraper && DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carbuildr uv run pytest tests/test_orchestrator.py -v
 ```
 
 Expected: PASS.
@@ -2322,7 +2322,7 @@ test('part detail page shows the vendor block', async ({ page }) => {
 ```bash
 # ensure data is seeded:
 npm run db:seed:vehicles
-cd scraper && DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carpartpicker uv run python -m scraper summit-racing || echo "live scrape skipped — fixtures still in DB from upsert tests"
+cd scraper && DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carbuildr uv run python -m scraper summit-racing || echo "live scrape skipped — fixtures still in DB from upsert tests"
 cd ..
 npm run test:e2e
 ```
@@ -2419,7 +2419,7 @@ git commit -m "ci: weekly Summit Racing scraper via GitHub Actions"
 - [ ] **Step 16.1: Write the root README**
 
 ```markdown
-# CarPartPicker
+# Carbuildr
 
 PCPartPicker for tuner cars. Phase 0 foundation: database schema, scraper, read-only catalog.
 
@@ -2447,7 +2447,7 @@ npm run dev  # http://localhost:3000
 
 # 5. Run scraper end-to-end (live; requires Summit Racing to be reachable)
 cd scraper
-DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carpartpicker \
+DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carbuildr \
   uv run python -m scraper summit-racing
 ```
 
@@ -2463,14 +2463,14 @@ DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carpartpicker \
 
 ## Project layout
 
-See `docs/specs/2026-04-30-carpartpicker-design.md` for the full design.
+See `docs/specs/2026-04-30-carbuildr-design.md` for the full design.
 See `docs/plans/` for phased implementation plans.
 ```
 
 - [ ] **Step 16.2: Write the scraper README**
 
 ```markdown
-# CarPartPicker — Scraper
+# Carbuildr — Scraper
 
 Python service that scrapes mod retailers and upserts normalized parts into Postgres.
 
@@ -2487,7 +2487,7 @@ Python service that scrapes mod retailers and upserts normalized parts into Post
 
 ```bash
 uv sync --all-groups
-DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carpartpicker \
+DATABASE_URL=postgresql://cpp:cpp@localhost:5432/carbuildr \
   uv run python -m scraper summit-racing
 uv run pytest
 ```
@@ -2527,7 +2527,7 @@ git commit -m "docs: README for app and scraper"
 - §9 error handling — partial: scraper failure isolation (Task 11 try/except per part), idempotent upsert (Task 10). Sentry alerting deferred to Phase 2 per the spec.
 - §10 testing strategy — fitment parser snapshots (Task 7), wheel/tire math tests (Phase 1), scraper fixture tests (Task 9), e2e (Task 14). Compatibility engine golden tests are Phase 1.
 
-**Placeholder scan:** No "TBD", "TODO" left as work items. The placeholder I left intentionally is `affiliateValue: 'carpartpicker'` in vendor seeds (Task 5), flagged in §11 of the spec. Affiliate program signups are external work, not code.
+**Placeholder scan:** No "TBD", "TODO" left as work items. The placeholder I left intentionally is `affiliateValue: 'carbuildr'` in vendor seeds (Task 5), flagged in §11 of the spec. Affiliate program signups are external work, not code.
 
 **Type consistency:** `NormalizedPart` shape matches between Python (Task 6) and the Drizzle `parts` columns (Task 2). `parsed_fitment` carries the same fields used by `fitment_rules` columns. `category_slug` arg in `upsert_part` matches `categories.slug` values seeded in Task 4. Function names referenced across tasks: `runVehicleSeed`, `runCategorySeed`, `runVendorSeed`, `listAllParts`, `listPartsByCategory`, `getPartByBrandModel`, `parse_fitment`, `map_category`, `upsert_part`, `run_vendor_live`, `run_vendor_from_fixtures` — all defined exactly once and called by their definition name.
 
@@ -2536,4 +2536,4 @@ git commit -m "docs: README for app and scraper"
 ---
 
 ## Done. Plan saved to:
-`docs/plans/2026-04-30-carpartpicker-phase-0-foundation.md`
+`docs/plans/2026-04-30-carbuildr-phase-0-foundation.md`

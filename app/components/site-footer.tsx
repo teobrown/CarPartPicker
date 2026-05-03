@@ -7,7 +7,7 @@ export function SiteFooter() {
       <div className="mx-auto max-w-[1400px] px-6 py-10 grid gap-8 md:grid-cols-4">
         <div className="md:col-span-2">
           <p className="display-md">
-            CarPartPicker<span className="text-signal">.</span>
+            Carbuildr<span className="text-signal">.</span>
           </p>
           <p className="body-sm mt-3 max-w-md">
             A compatibility-checked catalog of bolt-on, suspension, wheel, and body mods

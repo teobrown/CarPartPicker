@@ -29,7 +29,7 @@ export async function generateMetadata({
     title,
     description,
     openGraph: {
-      title: `${title} · CarPartPicker`,
+      title: `${title} · Carbuildr`,
       description,
       type: "website",
     },

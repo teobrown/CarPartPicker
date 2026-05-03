@@ -33,7 +33,7 @@ export async function ensureSamplePart() {
     [vendor] = await db.insert(vendors).values({
       name: 'FCP Euro', slug: 'fcp-euro',
       affiliateProgram: 'AvantLink', affiliateParam: 'avad',
-      affiliateValue: 'carpartpicker', baseUrl: 'https://www.fcpeuro.com',
+      affiliateValue: 'carbuildr', baseUrl: 'https://www.fcpeuro.com',
     }).returning();
   }
   // Find or insert the part

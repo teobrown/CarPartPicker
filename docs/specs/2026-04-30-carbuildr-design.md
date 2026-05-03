@@ -1,8 +1,8 @@
-# CarPartPicker — Design Spec
+# Carbuildr — Design Spec
 
 **Date:** 2026-04-30
 **Owner:** Teo
-**Working name:** CarPartPicker (rename before launch)
+**Brand:** Carbuildr · domain `carbuildr.com`
 **Status:** Approved design, ready for implementation plan
 
 ---
@@ -355,7 +355,7 @@ Skip: trivial CRUD unit tests, snapshot tests on UI components, coverage targets
 
 These don't block implementation start but should be answered before launch:
 
-1. **Brand name.** "CarPartPicker" is a placeholder; legal/SEO check before going public.
+1. **Brand name.** Carbuildr (`carbuildr.com`) — locked in 2026-05-03 after the carpartpicker.com domain was unavailable.
 2. **Affiliate program signups.** Apply to Impact Radius (Summit), AvantLink (FCP), and AmericanMuscle's program before launch. Some have approval delays.
 3. **Hosting cost ceiling.** Confirm Neon free tier handles expected query load; budget for ~$25/mo across Vercel + Neon + Sentry.
 4. **Vehicle seed data source.** Hand-enter 120 rows or scrape Edmunds / NHTSA VIN database. Hand-entry probably faster for MVP.

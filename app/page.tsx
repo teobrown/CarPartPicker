@@ -44,7 +44,7 @@ export default async function Home() {
               <ul className="space-y-6 text-[11px] tracking-[0.14em] uppercase font-[family-name:var(--font-mono)] text-fg-dim">
                 <li data-reveal="0">
                   <span className="block text-fg-dim">REGISTRY</span>
-                  <span className="block text-fg mt-1">CarPartPicker / 0.1</span>
+                  <span className="block text-fg mt-1">Carbuildr / 0.1</span>
                 </li>
                 <li data-reveal="1">
                   <span className="block text-fg-dim">DOMAIN</span>

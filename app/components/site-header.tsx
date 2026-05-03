@@ -45,7 +45,7 @@ export async function SiteHeader({
         <Link href="/" className="flex items-center gap-3 group">
           <Logomark />
           <span className="display-md tracking-tight">
-            CarPartPicker
+            Carbuildr
             <span className="text-signal">.</span>
           </span>
         </Link>

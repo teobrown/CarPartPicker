@@ -9,67 +9,67 @@ const data: V[] = [
   {
     name: 'Summit Racing', slug: 'summit-racing',
     affiliateProgram: 'Impact Radius', affiliateParam: 'utm_source',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.summitracing.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.summitracing.com',
   },
   {
     name: 'FCP Euro', slug: 'fcp-euro',
     affiliateProgram: 'AvantLink', affiliateParam: 'avad',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.fcpeuro.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.fcpeuro.com',
   },
   {
     name: 'ECS Tuning', slug: 'ecs-tuning',
     affiliateProgram: 'AvantLink', affiliateParam: 'avad',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.ecstuning.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.ecstuning.com',
   },
   {
     name: 'AmericanMuscle', slug: 'americanmuscle',
     affiliateProgram: 'AmericanMuscle Affiliate', affiliateParam: 'aff',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.americanmuscle.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.americanmuscle.com',
   },
   {
     name: 'RallySport Direct', slug: 'rallysport-direct',
     affiliateProgram: 'ShareASale', affiliateParam: 'sscid',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.rallysportdirect.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.rallysportdirect.com',
   },
   {
     name: 'PRL Motorsports', slug: 'prl-motorsports',
     affiliateProgram: 'AvantLink', affiliateParam: 'avad',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.prlmotorsports.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.prlmotorsports.com',
   },
   {
     name: '27WON Performance', slug: '27won',
     affiliateProgram: 'AvantLink', affiliateParam: 'avad',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://store.27won.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://store.27won.com',
   },
   {
     name: 'Flyin Miata', slug: 'flyin-miata',
     affiliateProgram: 'AvantLink', affiliateParam: 'avad',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://flyinmiata.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://flyinmiata.com',
   },
   {
     name: 'MAPerformance', slug: 'maperformance',
     affiliateProgram: 'AvantLink', affiliateParam: 'avad',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.maperformance.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.maperformance.com',
   },
   {
     name: 'IAG Performance', slug: 'iag-performance',
     affiliateProgram: 'AvantLink', affiliateParam: 'avad',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.iagperformance.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.iagperformance.com',
   },
   {
     name: 'Steeda Autosports', slug: 'steeda',
     affiliateProgram: 'AvantLink', affiliateParam: 'avad',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.steeda.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.steeda.com',
   },
   {
     name: '034Motorsport', slug: '034motorsport',
     affiliateProgram: 'AvantLink', affiliateParam: 'avad',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.034motorsport.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.034motorsport.com',
   },
   {
     name: 'eBay Motors', slug: 'ebay-motors',
     affiliateProgram: 'eBay Partner Network', affiliateParam: 'campid',
-    affiliateValue: 'carpartpicker', baseUrl: 'https://www.ebay.com',
+    affiliateValue: 'carbuildr', baseUrl: 'https://www.ebay.com',
   },
 ];
 
