@@ -41,6 +41,11 @@ _RULES: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\b(downpipe|down\s*pipe)\b", re.I), "downpipe"),
     (re.compile(r"\b(o2\s*sensor|oxygen\s*sensor|wideband\s*o2)\b", re.I), "o2-sensor"),
     (re.compile(r"\bexhaust\s*tip\b", re.I), "exhaust-tip"),
+    # Exhaust hardware catch-all: gaskets, clamps, studs, flanges, bolts —
+    # parts that aren't a full-system exhaust component but are exhaust-adjacent
+    # plumbing. Goes LAST in the exhaust block so the named-component rules
+    # above (catback, axleback, downpipe, front-pipe, etc.) win when both match.
+    (re.compile(r"\b(exhaust\s*gasket|exhaust\s*clamp|exhaust\s*stud|exhaust\s*flange|exhaust\s*bolt|exhaust\s*hardware|o2\s*bung)\b", re.I), "exhaust-hardware"),
 
     # --- Forced induction ---
     (re.compile(r"\bintercooler\b", re.I), "intercooler"),

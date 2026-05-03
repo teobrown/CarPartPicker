@@ -29,6 +29,11 @@ from scraper.category_classifier import classify_heuristic
     ("4 Inch Polished Exhaust Tip", "Borla", "catback-old", "exhaust-tip"),
     ("Innovate Wideband O2 Sensor", "Innovate", "catback-old", "o2-sensor"),
     ("Oxygen Sensor Replacement", "Bosch", "catback-old", "o2-sensor"),
+    # Exhaust hardware catch-all (gaskets, clamps, studs, flanges, O2 bungs)
+    ("3 Inch Exhaust Gasket", "GrimmSpeed", "catback-old", "exhaust-hardware"),
+    ("Stainless Exhaust Clamp Kit", "Vibrant", "catback-old", "exhaust-hardware"),
+    ("Exhaust Stud Set", "ARP", "catback-old", "exhaust-hardware"),
+    ("O2 Bung Plug, Stainless", "Generic", "catback-old", "exhaust-hardware"),
 
     # Forced induction
     ("Mishimoto Top Mount Intercooler", "Mishimoto", "intercooler-old", "intercooler"),
