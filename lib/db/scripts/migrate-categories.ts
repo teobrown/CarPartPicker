@@ -17,7 +17,7 @@ async function main() {
 
   const { db } = await import('@/lib/db/client');
   const { categories } = await import('@/lib/db/schema');
-  const { sql, like, not, isNotNull } = await import('drizzle-orm');
+  const { sql, like, not } = await import('drizzle-orm');
   const { runCategorySeed } = await import('@/lib/db/seed/categories');
 
   const before = await db.select().from(categories);
