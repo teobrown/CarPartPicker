@@ -138,7 +138,7 @@ One Drizzle migration `0006_recategorize.sql` and one Python re-classify run.
 - **Scraper category map** — `scraper/category_map.yaml` rewritten to point each vendor-category string at the correct fine-grained leaf. Future scrapes upsert directly into the right leaf, bypassing re-classification.
 - **Scraper slug overrides** — values in `orchestrator.py` that currently anchor a vendor seed URL to a coarse slug (e.g. AmericanMuscle's `aftermarket-performance-exhaust.html` → `catback`) become *hints* only. The post-upsert re-classifier still runs and can override.
 - **Tests** — `tests/unit/compat.test.ts` references slugs `intake` and `catback` in fixtures; rename to `cold-air-intake` and `catback-exhaust`.
-- **UI / build editor** — currently shows ~18 flat category rows. With ~33 visible leaves, switch to a **parent-grouped accordion**: parent header collapsible, leaf rows underneath. Defer this UI work to a follow-up commit so the data migration ships first; the existing flat rendering still works (just longer).
+- **UI / build editor** — currently shows ~18 flat category rows. With ~48 visible leaves, switch to a **parent-grouped accordion**: parent header collapsible, leaf rows underneath. Defer this UI work to a follow-up commit so the data migration ships first; the existing flat rendering still works (just longer).
 - **Catalog index** — `app/parts/page.tsx` should group categories by parent for display. Same template as build editor accordion. Same defer policy.
 
 ## Out of scope (this phase)
