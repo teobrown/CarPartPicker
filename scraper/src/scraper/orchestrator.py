@@ -20,6 +20,7 @@ from scraper.vendors import (
     maperformance,
     iag_performance,
     steeda,
+    motorsport034,
 )
 
 log = logging.getLogger(__name__)
@@ -138,6 +139,12 @@ def run_vendor_from_fixtures(vendor_slug: str, fixtures_dir: Path) -> int:
         for f in sorted(fixtures_dir.glob("product_*.html")):
             html = f.read_text(encoding="utf-8", errors="ignore")
             p = steeda.parse_product_page(html, url=f"file://{f}")
+            if p:
+                parts.append(p)
+    elif vendor_slug == "034motorsport":
+        for f in sorted(fixtures_dir.glob("product_*.html")):
+            html = f.read_text(encoding="utf-8", errors="ignore")
+            p = motorsport034.parse_product_page(html, url=f"file://{f}")
             if p:
                 parts.append(p)
     else:
@@ -947,6 +954,108 @@ async def _live_scrape_steeda(
     return out
 
 
+# 034Motorsport VW/Audi-deep category seed list. 034 is a Magento 2
+# storefront on ``www.034motorsport.com`` (the ``store.`` subdomain
+# 302-redirects to ``www.`` for our bot UA). They are the VW/Audi
+# tuner-side counterpart to FCP Euro's OEM-replacement focus —
+# 034-house parts (P34 / X34 / S34 intakes, Dynamic+ ECU tunes,
+# Density Line dogbone mounts, billet diff mounts, sway bars) plus
+# Racingline / IE / APR-licensed reseller distribution.
+#
+# Storefront category structure is **very shallow**. Most candidate
+# Magento-style category URLs (``/intercoolers.html``,
+# ``/coilovers.html``, ``/sway-bars.html``, ``/lowering-springs.html``,
+# ``/ecu-tuning.html``) return 404 — 034 organizes navigation through
+# the ``/vehicles`` car-picker rather than per-system category pages.
+# Only a handful of top-level category pages exist. Probed each
+# candidate against the Wayback Machine 2024 snapshot (live IP banned
+# during recon — 034 has CloudFront-fronted bot-detection that
+# challenges sustained traffic with reCAPTCHA):
+#   /cold-air-intakes.html         -> 24 products (intake)
+#   /exhaust-upgrades.html         -> 16 products (catless downpipes,
+#       res-deletes, midpipes — closest map is ``downpipe``; not a
+#       true catback bucket).
+#   /chassis-mounts.html           -> 24 products (motor / dogbone /
+#       diff mounts — none of the 18 supported categories cover
+#       motor mounts, so this seed is intentionally omitted).
+#   /control-arm-kits.html         -> 24 products (ditto — no slug).
+#   /springs-sway-bars.html        -> 24 products (mixed bin —
+#       lowering springs + sway bars in one collection; would need
+#       name-keyword routing à la 27WON to disambiguate. Omitted in
+#       this first cut; revisit if the catalog needs deeper coverage.).
+#   /universal-parts.html          -> 19 products (non-fitment-bound
+#       hardware — dogbone bushings, magnetic plugs, wheel nuts —
+#       outside our 18-category scope).
+#
+# Result: only **2 seed categories** map cleanly to our slug set,
+# yielding an estimated 40 SKUs per scrape. This is materially smaller
+# than IAG / Steeda but the 034-house engineering line is a unique
+# catalog supplement — every product is a 034-engineered VW/Audi
+# performance part not available through FCP Euro's OEM-replacement
+# inventory.
+MOTORSPORT034_SEED_CATEGORIES: list[tuple[str, str]] = [
+    ("https://www.034motorsport.com/cold-air-intakes.html", "intake"),
+    # Exhaust-upgrades is dominated by Res-X resonator deletes and
+    # cast-stainless racing catalyst (catless downpipe-class) parts,
+    # not true catbacks. Mapping to ``downpipe`` is the closest fit
+    # in our 18-category slug set.
+    ("https://www.034motorsport.com/exhaust-upgrades.html", "downpipe"),
+]
+
+
+async def _live_scrape_034motorsport(
+    *, max_products_per_category: int = 25
+) -> list[tuple[NormalizedPart, str]]:
+    """Live-scrape 034Motorsport's seeded VW/Audi categories.
+
+    Returns a list of ``(part, target_slug)`` tuples. The slug comes
+    from the seed-list entry the product was discovered under. 034 has
+    a CloudFront-fronted reCAPTCHA challenge layer that fires on
+    sustained bot traffic; we use the standard 1.0s per-request pacing
+    and tolerate per-URL failures so a transient 403 doesn't cascade.
+    """
+    out: list[tuple[NormalizedPart, str]] = []
+    fetched = 0
+    cats_done = 0
+    async with httpx.AsyncClient(
+        headers=HEADERS, timeout=20.0, follow_redirects=True
+    ) as client:
+        for cat_url, slug in MOTORSPORT034_SEED_CATEGORIES:
+            try:
+                r = await client.get(cat_url)
+                r.raise_for_status()
+            except httpx.HTTPError:
+                log.exception("category fetch failed: %s", cat_url)
+                continue
+            urls = motorsport034.parse_category_page(
+                r.text, base_url="https://www.034motorsport.com"
+            )
+            log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
+            for u in urls[:max_products_per_category]:
+                await asyncio.sleep(1.0)  # ~1 req/sec rate limit
+                try:
+                    pr = await client.get(u)
+                except httpx.HTTPError:
+                    log.exception("product fetch failed: %s", u)
+                    continue
+                if pr.status_code != 200:
+                    log.warning("product %s returned status %s", u, pr.status_code)
+                    continue
+                p = motorsport034.parse_product_page(pr.text, url=u)
+                if p:
+                    out.append((p, slug))
+                fetched += 1
+                if fetched % 25 == 0:
+                    log.info(
+                        "progress: %d products from %d categories",
+                        fetched,
+                        cats_done + 1,
+                    )
+            cats_done += 1
+    log.info("scrape done: %d products from %d categories", fetched, cats_done)
+    return out
+
+
 def run_vendor_live(vendor_slug: str) -> int:
     if vendor_slug == "fcp-euro":
         parts = asyncio.run(_live_scrape_fcp_euro())
@@ -966,6 +1075,8 @@ def run_vendor_live(vendor_slug: str) -> int:
         parts = asyncio.run(_live_scrape_iag_performance())
     elif vendor_slug == "steeda":
         parts = asyncio.run(_live_scrape_steeda())
+    elif vendor_slug == "034motorsport":
+        parts = asyncio.run(_live_scrape_034motorsport())
     else:
         raise ValueError(f"unknown vendor: {vendor_slug}")
     return _process_and_upsert(parts)

@@ -62,6 +62,11 @@ const data: V[] = [
     affiliateValue: 'carpartpicker', baseUrl: 'https://www.steeda.com',
   },
   {
+    name: '034Motorsport', slug: '034motorsport',
+    affiliateProgram: 'AvantLink', affiliateParam: 'avad',
+    affiliateValue: 'carpartpicker', baseUrl: 'https://www.034motorsport.com',
+  },
+  {
     name: 'eBay Motors', slug: 'ebay-motors',
     affiliateProgram: 'eBay Partner Network', affiliateParam: 'campid',
     affiliateValue: 'carpartpicker', baseUrl: 'https://www.ebay.com',
