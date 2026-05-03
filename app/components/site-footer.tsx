@@ -28,8 +28,8 @@ export function SiteFooter() {
           <p className="eyebrow mb-3">Status</p>
           <ul className="space-y-2 body-sm font-[family-name:var(--font-mono)] text-[12px]">
             <li><span className="pip mr-2 -translate-y-[1px] inline-block" />Phase 0 — foundation shipped</li>
-            <li><span className="pip pip-amber mr-2 -translate-y-[1px] inline-block" />Phase 1 — build editor (next)</li>
-            <li><span className="pip pip-dim mr-2 -translate-y-[1px] inline-block" />Phase 2 — vendor expansion</li>
+            <li><span className="pip mr-2 -translate-y-[1px] inline-block" />Phase 1 — MVP build shipped</li>
+            <li><span className="pip pip-amber mr-2 -translate-y-[1px] inline-block" />Phase 2 — vendor expansion (next)</li>
           </ul>
         </div>
       </div>

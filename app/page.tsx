@@ -57,7 +57,7 @@ export default async function Home() {
                 <li data-reveal="3">
                   <span className="block text-fg-dim">PHASE</span>
                   <span className="block text-fg mt-1 inline-flex items-center gap-2">
-                    <span className="pip" /> 0 — foundation
+                    <span className="pip" /> 1 — MVP build
                   </span>
                 </li>
               </ul>
@@ -98,8 +98,8 @@ export default async function Home() {
               {/* mini ticker */}
               <div className="mt-16 hairline-t pt-4 grid grid-cols-3 gap-6 max-w-2xl" data-reveal="4">
                 <Tick label="LATEST PART" value={parts[0]?.brand ?? "—"} sub={parts[0]?.model ?? "no parts yet"} />
-                <Tick label="WORKING VENDOR" value="FCP Euro" sub="JSON-LD parsed" />
-                <Tick label="SCRAPER" value="every Mon · 07:00 UTC" sub="GitHub Actions" />
+                <Tick label="VENDORS LIVE" value={`${stats.vendorCount}`} sub="weekly upserts" />
+                <Tick label="COMPAT ENGINE" value="vehicle-aware" sub="LLM + heuristic fitment" />
               </div>
             </div>
 
@@ -208,9 +208,9 @@ export default async function Home() {
             <p className="eyebrow mb-3">[004] · How it ships</p>
             <h2 className="display-lg">Spec → Plan → Build.</h2>
             <p className="body-sm mt-6 max-w-sm">
-              Phase 0 is the data spine: schema, scraper, read-only catalog. Phase 1
-              is the build editor and compatibility engine. Phase 2 expands vendors
-              and ships affiliate revenue.
+              Phase 0 (data spine) and Phase 1 (build editor, compat engine,
+              affiliate redirector) shipped. Phase 2 expands the vendor list,
+              hardens fitment, and signs up affiliate programs.
             </p>
           </div>
           <div className="col-span-12 md:col-span-8">
@@ -220,42 +220,42 @@ export default async function Home() {
                 label="SCHEMA"
                 title="Postgres on Neon, Drizzle ORM"
                 state="shipped"
-                detail="9 tables · 4 migrations · bigint cents · numeric wheel/bore"
+                detail="9 tables · bigint cents · numeric wheel/bore"
               />
               <PipelineRow
                 index="02"
                 label="SEED"
-                title="195 vehicles · 18 categories · 6 vendors"
+                title="195 vehicles · 18 categories · 13 vendors"
                 state="shipped"
                 detail="hand-curated platform specs · OEM bore + bolt patterns"
               />
               <PipelineRow
                 index="03"
-                label="SCRAPER"
-                title="FCP Euro · JSON-LD primary path"
+                label="SCRAPERS"
+                title="9 vendors live · LLM fitment fallback"
                 state="shipped"
-                detail="rate-limited httpx · idempotent upsert · weekly cron"
+                detail="rate-limited httpx · 429 retry · weekly per-vendor crons"
               />
               <PipelineRow
                 index="04"
-                label="UI"
-                title="Catalog index + part detail · this site"
+                label="COMPAT"
+                title="Vehicle-aware engine · year + sub-model rules"
                 state="shipped"
-                detail="Next.js 16 · TypeScript · server components"
+                detail="LLM-extracted fitment · model-conflict heuristic · hideIncompatible"
               />
               <PipelineRow
                 index="05"
                 label="BUILD EDITOR"
-                title="PCPartPicker-style category rows"
-                state="next"
-                detail="vehicle picker · compatibility engine · share URL"
+                title="PCPartPicker-style category rows · share URL"
+                state="shipped"
+                detail="anonymous slug · per-row Buy via /go affiliate redirector"
               />
               <PipelineRow
                 index="06"
                 label="EXPAND"
-                title="More vendors. Better fitment."
-                state="planned"
-                detail="ECS Tuning · AmericanMuscle · Haiku LLM fitment fallback"
+                title="More vendors. Affiliate signups. Fitment polish."
+                state="next"
+                detail="Subispeed · KW · 034 via Playwright · network applications"
               />
             </ol>
           </div>
@@ -376,7 +376,7 @@ function BuildPreviewCard() {
         <span className="text-fg-dim uppercase tracking-[0.12em]">Total</span>
         <span className="text-signal tabular">$3,049</span>
       </div>
-      <p className="eyebrow-signal text-[9px] mt-4">PHASE 1 PREVIEW</p>
+      <p className="eyebrow-signal text-[9px] mt-4">LIVE IN BUILD EDITOR</p>
     </div>
   );
 }
