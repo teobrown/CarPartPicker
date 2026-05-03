@@ -60,17 +60,37 @@ describe('vehicles seed', () => {
 });
 
 describe('categories seed', () => {
-  it('inserts the 18 MVP categories', async () => {
+  it('inserts every parent group and leaf (59 rows total)', async () => {
     const rows = await db.select().from(categories);
-    expect(rows.length).toBeGreaterThanOrEqual(15);
-    const slugs = rows.map((r) => r.slug);
+    expect(rows.length).toBe(59);
+    const slugs = rows.map((r) => r.slug).sort();
+    // Sample-check: parents and a representative leaf from each group.
     for (const expected of [
-      'intake', 'catback', 'axleback', 'muffler-delete', 'tune', 'downpipe',
-      'intercooler', 'bov', 'coilovers', 'springs', 'sway-bars',
-      'wheels', 'tires', 'lip-kit', 'spoiler', 'fender-flares',
-      'headlights', 'taillights',
+      'intake', 'exhaust', 'forced-induction', 'tuning',
+      'suspension', 'wheels-tires', 'brakes', 'body-aero',
+      'lighting', 'internal',
+      'cold-air-intake', 'catback-exhaust', 'intercooler',
+      'ecu-tune', 'coilovers', 'wheels', 'brake-pads',
+      'front-lip', 'headlights', 'misc',
     ]) {
       expect(slugs, `missing slug: ${expected}`).toContain(expected);
+    }
+  });
+
+  it('marks misc as hidden from picker; everything else visible', async () => {
+    const rows = await db.select().from(categories);
+    const hidden = rows.filter((r) => r.hiddenFromPicker).map((r) => r.slug).sort();
+    expect(hidden).toEqual(['internal', 'misc']);
+  });
+
+  it('every leaf has a parent_id pointing at a real parent', async () => {
+    const rows = await db.select().from(categories);
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const leaves = rows.filter((r) => r.parentId != null);
+    expect(leaves.length).toBe(49);
+    for (const leaf of leaves) {
+      expect(byId.get(leaf.parentId!), `leaf ${leaf.slug} -> orphan parent_id ${leaf.parentId}`).toBeDefined();
+      expect(byId.get(leaf.parentId!)!.parentId).toBeNull();
     }
   });
 });
