@@ -19,6 +19,7 @@ from scraper.vendors import (
     flyin_miata,
     maperformance,
     iag_performance,
+    steeda,
 )
 
 log = logging.getLogger(__name__)
@@ -131,6 +132,12 @@ def run_vendor_from_fixtures(vendor_slug: str, fixtures_dir: Path) -> int:
         for f in sorted(fixtures_dir.glob("product_*.html")):
             html = f.read_text(encoding="utf-8", errors="ignore")
             p = iag_performance.parse_product_page(html, url=f"file://{f}")
+            if p:
+                parts.append(p)
+    elif vendor_slug == "steeda":
+        for f in sorted(fixtures_dir.glob("product_*.html")):
+            html = f.read_text(encoding="utf-8", errors="ignore")
+            p = steeda.parse_product_page(html, url=f"file://{f}")
             if p:
                 parts.append(p)
     else:
@@ -810,6 +817,136 @@ async def _live_scrape_iag_performance(
     return out
 
 
+# Steeda Autosports Mustang-deep category seed list. Steeda's storefront
+# is BigCommerce-backed (CDN host ``cdn11.bigcommerce.com/s-67g50tl419``)
+# but they've replaced the stock category renderer with a **Searchspring**
+# JS widget — the human-facing ``/<year>-mustang-<system>`` URLs are
+# pure navigation hubs in the server-rendered HTML, with no product
+# anchors to scrape. Visible products are loaded client-side from
+# ``api.searchspring.net/api/search/search.json?siteId=3thnkg``.
+#
+# Seed list keys each entry to a Searchspring API URL pinned to a
+# ``filter.categories_hierarchy=<path>`` value (encoded), where the
+# hierarchy path matches the human nav (Mustang > generation > system
+# > sub-system). PDPs themselves are server-rendered with the standard
+# BigCommerce JSON-LD ``Product`` block, so once we have the URL list
+# we follow the same per-PDP fetch pattern as IAG / FCP / RSD.
+#
+# Probe results (verified 2026-04-30 via Searchspring totalResults):
+#   2024-2026 Mustang > Exhaust > Cat-Back Exhaust         -> 106
+#   2024-2026 Mustang > Exhaust > Axle-Back Exhaust        -> 57
+#   2024-2026 Mustang > Induction                          -> 54  (no
+#       useful sub-cat; "Cold Air Intake" sub doesn't exist for S650
+#       yet, so seed the parent.)
+#   2024-2026 Mustang > Suspension > Lowering Springs      -> 21
+#   2024-2026 Mustang > Suspension > Shocks & Struts       -> 34
+#   2015-2023 Mustang > Exhaust > Cat-Back Exhuast (sic)   -> 168
+#       (Steeda's S550 cat-back leaf category has a typo —
+#       "Exhuast" — that we have to mirror exactly or the filter
+#       returns 0.)
+#   2015-2023 Mustang > Exhaust > Axle-Back Exhaust        -> 94
+#   2015-2023 Mustang > Induction > Cold Air Intake        -> 65
+#   2015-2023 Mustang > Suspension > Coilovers             -> 56
+#   2015-2023 Mustang > Suspension > Lowering Springs      -> 60
+#
+# NOTE: Steeda's catalog mixes Ford platforms (Mustang / F-150 /
+# Bronco / Explorer). Seeding only Mustang>... avoids cross-platform
+# noise. AmericanMuscle covers the same ground at a much wider catalog
+# breadth; Steeda supplements with the Steeda-house engineering line
+# (Pro-Action, Tri-Ax, Q-series, drag springs) AM doesn't carry first
+# party.
+_STEEDA_SS_BASE = (
+    "https://api.searchspring.net/api/search/search.json"
+    "?siteId=3thnkg&resultsFormat=native&resultsPerPage=100"
+)
+
+
+def _steeda_seed(category_path: str) -> str:
+    """Build a Searchspring API URL filtered to one Steeda category
+    hierarchy path. The path is the human breadcrumb joined with
+    ``>`` — e.g. ``"Mustang>2024-2026 Mustang>Exhaust>Cat-Back Exhaust"``.
+    """
+    from urllib.parse import quote
+
+    return f"{_STEEDA_SS_BASE}&filter.categories_hierarchy={quote(category_path)}"
+
+
+STEEDA_SEED_CATEGORIES: list[tuple[str, str]] = [
+    # S650 (2024-2026 Mustang)
+    (_steeda_seed("Mustang>2024-2026 Mustang>Exhaust>Cat-Back Exhaust"), "catback"),
+    (_steeda_seed("Mustang>2024-2026 Mustang>Exhaust>Axle-Back Exhaust"), "axleback"),
+    (_steeda_seed("Mustang>2024-2026 Mustang>Induction"), "intake"),
+    (_steeda_seed("Mustang>2024-2026 Mustang>Suspension>Lowering Springs"), "springs"),
+    (_steeda_seed("Mustang>2024-2026 Mustang>Suspension>Shocks & Struts"), "coilovers"),
+    # S550 (2015-2023 Mustang) — much deeper catalog. Note the typo
+    # "Exhuast" in the cat-back leaf name; mirroring it exactly.
+    (_steeda_seed("Mustang>2015-2023 Mustang>Exhaust>Cat-Back Exhuast"), "catback"),
+    (_steeda_seed("Mustang>2015-2023 Mustang>Exhaust>Axle-Back Exhaust"), "axleback"),
+    (_steeda_seed("Mustang>2015-2023 Mustang>Induction>Cold Air Intake"), "intake"),
+    (_steeda_seed("Mustang>2015-2023 Mustang>Suspension>Coilovers"), "coilovers"),
+    (_steeda_seed("Mustang>2015-2023 Mustang>Suspension>Lowering Springs"), "springs"),
+]
+
+
+async def _live_scrape_steeda(
+    *, max_products_per_category: int = 25
+) -> list[tuple[NormalizedPart, str]]:
+    """Live-scrape Steeda's seeded Mustang categories.
+
+    Returns a list of ``(part, target_slug)`` tuples. The slug comes
+    from the seed-list entry the product was discovered under. Steeda
+    accepts our bot UA without challenge and has no Cloudflare/anti-bot
+    layer, so the standard 1.0s per-request pacing is sufficient.
+
+    Two-step fetch per category:
+    1. ``GET <searchspring-api-url>`` — returns a JSON payload with
+       up to 100 ``results[].url`` entries. ``parse_category_page``
+       sniffs JSON vs HTML and routes to the JSON parser.
+    2. For each result URL, ``GET <pdp-url>`` and parse the JSON-LD
+       ``Product`` block via ``parse_product_page``.
+    """
+    out: list[tuple[NormalizedPart, str]] = []
+    fetched = 0
+    cats_done = 0
+    async with httpx.AsyncClient(
+        headers=HEADERS, timeout=20.0, follow_redirects=True
+    ) as client:
+        for cat_url, slug in STEEDA_SEED_CATEGORIES:
+            try:
+                r = await client.get(cat_url)
+                r.raise_for_status()
+            except httpx.HTTPError:
+                log.exception("category fetch failed: %s", cat_url)
+                continue
+            urls = steeda.parse_category_page(
+                r.text, base_url="https://www.steeda.com"
+            )
+            log.info("%s [-> %s]: %d product URLs found", cat_url, slug, len(urls))
+            for u in urls[:max_products_per_category]:
+                await asyncio.sleep(1.0)  # ~1 req/sec rate limit
+                try:
+                    pr = await client.get(u)
+                except httpx.HTTPError:
+                    log.exception("product fetch failed: %s", u)
+                    continue
+                if pr.status_code != 200:
+                    log.warning("product %s returned status %s", u, pr.status_code)
+                    continue
+                p = steeda.parse_product_page(pr.text, url=u)
+                if p:
+                    out.append((p, slug))
+                fetched += 1
+                if fetched % 25 == 0:
+                    log.info(
+                        "progress: %d products from %d categories",
+                        fetched,
+                        cats_done + 1,
+                    )
+            cats_done += 1
+    log.info("scrape done: %d products from %d categories", fetched, cats_done)
+    return out
+
+
 def run_vendor_live(vendor_slug: str) -> int:
     if vendor_slug == "fcp-euro":
         parts = asyncio.run(_live_scrape_fcp_euro())
@@ -827,6 +964,8 @@ def run_vendor_live(vendor_slug: str) -> int:
         parts = asyncio.run(_live_scrape_maperformance())
     elif vendor_slug == "iag-performance":
         parts = asyncio.run(_live_scrape_iag_performance())
+    elif vendor_slug == "steeda":
+        parts = asyncio.run(_live_scrape_steeda())
     else:
         raise ValueError(f"unknown vendor: {vendor_slug}")
     return _process_and_upsert(parts)

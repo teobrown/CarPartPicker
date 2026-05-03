@@ -1,0 +1,32 @@
+name: scrape-steeda
+
+on:
+  schedule:
+    - cron: '0 11 * * 2'  # Tuesdays 11:00 UTC (4-hour offset from AmericanMuscle's Tuesday 07:00 UTC slot — keeps the same Mustang vendor pair on the same weekday but with 4h buffer between runs)
+  workflow_dispatch: {}
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: scraper
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install scraper deps
+        run: uv sync --all-groups
+
+      - name: Run scraper against Steeda
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: uv run python -m scraper steeda
