@@ -1,54 +1,165 @@
-intake:
+# Vendor category strings -> our internal leaf slugs. Used as a fuzzy
+# fallback when the orchestrator's `slug_override` doesn't apply (FCP Euro
+# JSON-LD only carries breadcrumb categories like "Exterior Body").
+# Every key must be a valid leaf in lib/db/seed/categories.ts.
+
+cold-air-intake:
   - "Cold Air Intake Systems"
-  - "Air Intakes"
-  - "Air Intake"
+  - "Cold Air Intake"
   - "Performance Intake System"
-catback:
+short-ram-intake:
+  - "Short Ram Intake"
+  - "Short Ram Air Intake"
+ram-air-intake:
+  - "Ram Air Intake"
+intake-manifold:
+  - "Intake Manifold"
+  - "Intake Manifold Adapter"
+air-filter:
+  - "Air Filter"
+  - "Replacement Air Filter"
+  - "Panel Air Filter"
+intake-hose:
+  - "Intake Hose"
+  - "Silicone Intake Hose"
+maf-housing:
+  - "MAF Housing"
+
+catback-exhaust:
   - "Cat-Back Exhaust Systems"
   - "Catback Exhaust"
-axleback:
+  - "Cat-Back Exhaust"
+axleback-exhaust:
   - "Axle-Back Exhaust"
   - "Axleback Exhaust"
-muffler-delete:
-  - "Muffler Delete"
-  - "Muffler Bypass"
-tune:
-  - "Tuners"
-  - "ECU Tuning"
-  - "Programmers"
+front-pipe:
+  - "Front Pipe"
+  - "Front-Pipe"
+  - "J-Pipe"
+  - "Mid-Pipe"
+  - "Over-Pipe"
 downpipe:
   - "Downpipes"
   - "Down Pipes"
+  - "Downpipes / J-Pipes"
+muffler-delete:
+  - "Muffler Delete"
+  - "Muffler Bypass"
+exhaust-tip:
+  - "Exhaust Tips"
+o2-sensor:
+  - "O2 Sensors"
+  - "Oxygen Sensors"
+  - "Wideband O2"
+exhaust-hardware:
+  - "Exhaust Hardware"
+  - "Exhaust Gaskets"
+
 intercooler:
   - "Intercoolers"
+charge-pipe:
+  - "Charge Pipes"
+  - "Boost Pipes"
 bov:
   - "Blow Off Valves"
   - "Diverter Valves"
+  - "BOV / BPV"
+wastegate:
+  - "Wastegates"
+
+ecu-tune:
+  - "Tuners"
+  - "ECU Tuning"
+  - "Programmers"
+  - "Accessport"
+wideband-gauge:
+  - "Wideband"
+  - "Wideband Gauges"
+  - "Air/Fuel Gauges"
+  - "Boost Gauges"
+
 coilovers:
   - "Coilover Suspension Kits"
   - "Coilovers"
-springs:
+  - "Coilover Kits"
+lowering-springs:
   - "Lowering Springs"
+  - "Sport Springs"
 sway-bars:
   - "Sway Bars"
   - "Anti-Roll Bars"
+end-links:
+  - "End Links"
+  - "Sway End Links"
+control-arms:
+  - "Control Arms"
+  - "Control Arm Kits"
+strut-bar:
+  - "Strut Bars"
+  - "Chassis Braces"
+  - "Strut Tower Bars"
+camber-kit:
+  - "Camber Kits"
+  - "Camber Arms"
+  - "Camber Bolts"
+bushings:
+  - "Bushings"
+  - "Subframe Bushings"
+  - "Bushing Kits"
+
 wheels:
   - "Wheels"
   - "Custom Wheels"
 tires:
   - "Tires"
   - "Performance Tires"
-lip-kit:
+wheel-spacers:
+  - "Wheel Spacers"
+  - "Hub Spacers"
+lug-nuts-studs:
+  - "Lug Nuts"
+  - "Wheel Studs"
+  - "Lug Hardware"
+hub-rings:
+  - "Hub Centric Rings"
+
+brake-pads:
+  - "Brake Pads"
+brake-rotors:
+  - "Brake Rotors"
+  - "Brake Discs"
+brake-lines:
+  - "Brake Lines"
+  - "Stainless Brake Lines"
+big-brake-kit:
+  - "Big Brake Kits"
+  - "BBK"
+
+front-lip:
   - "Lip Kits"
   - "Front Lip"
-spoiler:
+  - "Front Splitter"
+side-skirts:
+  - "Side Skirts"
+rear-diffuser:
+  - "Rear Diffusers"
+spoiler-wing:
   - "Spoilers"
   - "Wings"
+hood:
+  - "Hoods"
+  - "Carbon Hoods"
 fender-flares:
   - "Fender Flares"
+
 headlights:
   - "Headlights"
   - "Headlamps"
 taillights:
   - "Tail Lights"
   - "Taillights"
+fog-lights:
+  - "Fog Lights"
+led-bulbs:
+  - "LED Bulbs"
+  - "HID Kits"

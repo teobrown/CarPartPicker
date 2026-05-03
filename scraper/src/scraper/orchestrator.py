@@ -191,13 +191,13 @@ def run_vendor_from_fixtures(vendor_slug: str, fixtures_dir: Path) -> int:
 # product-page JSON-LD `category` field only carries the top-level breadcrumb
 # (e.g. "Exterior Body") and can't disambiguate wheels vs spoilers vs lights.
 FCP_EURO_SEED_CATEGORIES: list[tuple[str, str]] = [
-    ("https://www.fcpeuro.com/Volkswagen-parts/Air-Intake/", "intake"),
-    ("https://www.fcpeuro.com/Volkswagen-parts/Catback-Exhaust/", "catback"),
+    ("https://www.fcpeuro.com/Volkswagen-parts/Air-Intake/", "cold-air-intake"),
+    ("https://www.fcpeuro.com/Volkswagen-parts/Catback-Exhaust/", "catback-exhaust"),
     ("https://www.fcpeuro.com/Volkswagen-parts/Muffler/", "muffler-delete"),
     ("https://www.fcpeuro.com/Volkswagen-parts/Intercooler/", "intercooler"),
     ("https://www.fcpeuro.com/Volkswagen-parts/Coilovers/", "coilovers"),
     ("https://www.fcpeuro.com/Volkswagen-parts/Wheels/", "wheels"),
-    ("https://www.fcpeuro.com/Volkswagen-parts/Spoiler/", "spoiler"),
+    ("https://www.fcpeuro.com/Volkswagen-parts/Spoiler/", "spoiler-wing"),
     ("https://www.fcpeuro.com/Volkswagen-parts/Fender-Flare/", "fender-flares"),
     ("https://www.fcpeuro.com/Volkswagen-parts/Headlight-Assembly/", "headlights"),
     ("https://www.fcpeuro.com/Volkswagen-parts/Tail-Light-Assembly/", "taillights"),
@@ -260,14 +260,14 @@ async def _live_scrape_fcp_euro(
 # (e.g. "Cold Air Intakes") is too narrow on some pages and too broad on
 # others, so anchoring slug to the seed URL is the most reliable path.
 AMERICANMUSCLE_SEED_CATEGORIES: list[tuple[str, str]] = [
-    ("https://www.americanmuscle.com/cold-air-intakes.html", "intake"),
-    ("https://www.americanmuscle.com/aftermarket-performance-exhaust.html", "catback"),
+    ("https://www.americanmuscle.com/cold-air-intakes.html", "cold-air-intake"),
+    ("https://www.americanmuscle.com/aftermarket-performance-exhaust.html", "catback-exhaust"),
     ("https://www.americanmuscle.com/aftermarket-performance-racing-mufflers.html", "muffler-delete"),
     ("https://www.americanmuscle.com/aftermarket-performance-racing-intercoolers.html", "intercooler"),
     ("https://www.americanmuscle.com/aftermarket-shocks-struts.html", "coilovers"),
     ("https://www.americanmuscle.com/aftermarket-headlights.html", "headlights"),
     ("https://www.americanmuscle.com/aftermarket-muscle-car-tail-lights.html", "taillights"),
-    ("https://www.americanmuscle.com/aftermarket-rear-spoilers-wings.html", "spoiler"),
+    ("https://www.americanmuscle.com/aftermarket-rear-spoilers-wings.html", "spoiler-wing"),
 ]
 
 
@@ -324,19 +324,19 @@ async def _live_scrape_americanmuscle(
 # specializing in Subaru WRX / STI / BRZ / Crosstrek / Forester / Outback,
 # so this list is the first set of Subaru-fit parts to land in the catalog.
 RALLYSPORT_DIRECT_SEED_CATEGORIES: list[tuple[str, str]] = [
-    ("https://www.rallysportdirect.com/collections/cold-air-intakes", "intake"),
-    ("https://www.rallysportdirect.com/collections/cat-back-exhaust-system", "catback"),
-    ("https://www.rallysportdirect.com/collections/axle-back-exhausts", "muffler-delete"),
-    ("https://www.rallysportdirect.com/collections/cobb-tuning-accessports", "tune"),
+    ("https://www.rallysportdirect.com/collections/cold-air-intakes", "cold-air-intake"),
+    ("https://www.rallysportdirect.com/collections/cat-back-exhaust-system", "catback-exhaust"),
+    ("https://www.rallysportdirect.com/collections/axle-back-exhausts", "axleback-exhaust"),
+    ("https://www.rallysportdirect.com/collections/cobb-tuning-accessports", "ecu-tune"),
     ("https://www.rallysportdirect.com/collections/downpipes-and-y-pipes", "downpipe"),
     ("https://www.rallysportdirect.com/collections/intercoolers", "intercooler"),
     ("https://www.rallysportdirect.com/collections/blow-off-valves", "bov"),
     ("https://www.rallysportdirect.com/collections/coilovers", "coilovers"),
-    ("https://www.rallysportdirect.com/collections/lowering-springs", "springs"),
+    ("https://www.rallysportdirect.com/collections/lowering-springs", "lowering-springs"),
     ("https://www.rallysportdirect.com/collections/sway-bars", "sway-bars"),
     ("https://www.rallysportdirect.com/collections/wheels", "wheels"),
-    ("https://www.rallysportdirect.com/collections/front-lips", "lip-kit"),
-    ("https://www.rallysportdirect.com/collections/spoilers-and-wings", "spoiler"),
+    ("https://www.rallysportdirect.com/collections/front-lips", "front-lip"),
+    ("https://www.rallysportdirect.com/collections/spoilers-and-wings", "spoiler-wing"),
 ]
 
 
@@ -399,13 +399,13 @@ async def _live_scrape_rallysport_direct(
 # intercoolers (35), coilovers (15), springs (16), sway bars (12),
 # wings/spoilers (11).
 PRL_MOTORSPORTS_SEED_CATEGORIES: list[tuple[str, str]] = [
-    ("https://www.prlmotorsports.com/collections/intake", "intake"),
-    ("https://www.prlmotorsports.com/collections/exhaust", "catback"),
+    ("https://www.prlmotorsports.com/collections/intake", "cold-air-intake"),
+    ("https://www.prlmotorsports.com/collections/exhaust", "catback-exhaust"),
     ("https://www.prlmotorsports.com/collections/collection-vendor-intercoolers-charge-pipes", "intercooler"),
     ("https://www.prlmotorsports.com/collections/collection-vendor-coilovers", "coilovers"),
-    ("https://www.prlmotorsports.com/collections/collection-vendor-lowering-springs", "springs"),
+    ("https://www.prlmotorsports.com/collections/collection-vendor-lowering-springs", "lowering-springs"),
     ("https://www.prlmotorsports.com/collections/collection-vendor-sway-bars-end-links", "sway-bars"),
-    ("https://www.prlmotorsports.com/collections/collection-vendor-wings-spoilers", "spoiler"),
+    ("https://www.prlmotorsports.com/collections/collection-vendor-wings-spoilers", "spoiler-wing"),
 ]
 
 
@@ -487,22 +487,22 @@ WIN27_SEED_CATEGORIES: list[tuple[str, str]] = [
 _WIN27_NAME_KEYWORDS: list[tuple[tuple[str, ...], str]] = [
     # Most-specific exhaust variants first (axle-back is rare on 27WON;
     # cat-back / "Front-Pipe Back" / valved exhaust are the common forms).
-    (("axle-back", "axleback"), "axleback"),
+    (("axle-back", "axleback"), "axleback-exhaust"),
     (("downpipe", "down pipe", "down-pipe"), "downpipe"),
-    (("cat-back", "catback", "cat back", "front-pipe back exhaust", "valved exhaust", "exhaust system"), "catback"),
+    (("cat-back", "catback", "cat back", "front-pipe back exhaust", "valved exhaust", "exhaust system"), "catback-exhaust"),
     # Intake variants. "Snorkel" sits in the intake family on 27WON.
-    (("cold air intake", "cai", "air intake", "intake system", "intake snorkel", "sri upgrade"), "intake"),
+    (("cold air intake", "cai", "air intake", "intake system", "intake snorkel", "sri upgrade"), "cold-air-intake"),
     # Charge-air. FMIC / "front mount intercooler" / "intercooler".
     (("intercooler", "fmic"), "intercooler"),
     # Bypass / blow-off / diverter valve.
     (("bypass valve", "blow off valve", "blow-off valve", "diverter valve", "bpv", "bov"), "bov"),
     # Suspension.
     (("coilover",), "coilovers"),
-    (("lowering spring", "lowering springs"), "springs"),
+    (("lowering spring", "lowering springs"), "lowering-springs"),
     (("sway bar", "swaybar", "anti-roll bar"), "sway-bars"),
     # Tuning. 27WON resells Hondata fuel system upgrades + reflashes; map
-    # those onto our generic "tune" slug.
-    (("hondata", "ecu tune", "flash tuner", "ecu reflash"), "tune"),
+    # those onto the new "ecu-tune" slug.
+    (("hondata", "ecu tune", "flash tuner", "ecu reflash"), "ecu-tune"),
 ]
 
 
@@ -607,23 +607,23 @@ async def _live_scrape_27won(
 FLYIN_MIATA_SEED_CATEGORIES: list[tuple[str, str]] = [
     # NA (1990-1997)
     ("https://flyinmiata.com/collections/na-handling-coilovers", "coilovers"),
-    ("https://flyinmiata.com/collections/na-powertrain-exhaust", "catback"),
-    ("https://flyinmiata.com/collections/na-powertrain-intake", "intake"),
+    ("https://flyinmiata.com/collections/na-powertrain-exhaust", "catback-exhaust"),
+    ("https://flyinmiata.com/collections/na-powertrain-intake", "cold-air-intake"),
     ("https://flyinmiata.com/collections/na-wheels", "wheels"),
     # NB (1999-2005)
     ("https://flyinmiata.com/collections/nb-handling-coilovers", "coilovers"),
-    ("https://flyinmiata.com/collections/nb-powertrain-exhaust", "catback"),
-    ("https://flyinmiata.com/collections/nb-powertrain-intake", "intake"),
+    ("https://flyinmiata.com/collections/nb-powertrain-exhaust", "catback-exhaust"),
+    ("https://flyinmiata.com/collections/nb-powertrain-intake", "cold-air-intake"),
     ("https://flyinmiata.com/collections/nb-wheels", "wheels"),
     # NC (2006-2015)
     ("https://flyinmiata.com/collections/nc-handling-coilovers", "coilovers"),
-    ("https://flyinmiata.com/collections/nc-powertrain-exhaust", "catback"),
-    ("https://flyinmiata.com/collections/nc-powertrain-intake", "intake"),
+    ("https://flyinmiata.com/collections/nc-powertrain-exhaust", "catback-exhaust"),
+    ("https://flyinmiata.com/collections/nc-powertrain-intake", "cold-air-intake"),
     ("https://flyinmiata.com/collections/nc-wheels", "wheels"),
     # ND (2016-now)
     ("https://flyinmiata.com/collections/nd-handling-coilovers", "coilovers"),
-    ("https://flyinmiata.com/collections/nd-powertrain-exhaust", "catback"),
-    ("https://flyinmiata.com/collections/nd-powertrain-intake", "intake"),
+    ("https://flyinmiata.com/collections/nd-powertrain-exhaust", "catback-exhaust"),
+    ("https://flyinmiata.com/collections/nd-powertrain-intake", "cold-air-intake"),
     ("https://flyinmiata.com/collections/nd-wheels", "wheels"),
 ]
 
@@ -701,11 +701,11 @@ async def _live_scrape_flyin_miata(
 # sleep (vs 1.0s for every other vendor) — bumped from 1.5s after the
 # 2026-05-01 run was blanket-429'd. Don't lower without re-probing.
 MAPERFORMANCE_SEED_CATEGORIES: list[tuple[str, str]] = [
-    ("https://www.maperformance.com/search?q=gr+corolla+intake&type=product", "intake"),
-    ("https://www.maperformance.com/search?q=gr+corolla+exhaust&type=product", "catback"),
+    ("https://www.maperformance.com/search?q=gr+corolla+intake&type=product", "cold-air-intake"),
+    ("https://www.maperformance.com/search?q=gr+corolla+exhaust&type=product", "catback-exhaust"),
     ("https://www.maperformance.com/search?q=gr+corolla+coilover&type=product", "coilovers"),
     ("https://www.maperformance.com/search?q=gr+corolla+intercooler&type=product", "intercooler"),
-    ("https://www.maperformance.com/search?q=gr86+intake&type=product", "intake"),
+    ("https://www.maperformance.com/search?q=gr86+intake&type=product", "cold-air-intake"),
 ]
 
 
@@ -780,12 +780,12 @@ async def _live_scrape_maperformance(
 #   /suspension/height-adjustment/coilovers/             -> 30
 #   /suspension/suspension-linkage/sway-bars/            -> 30
 IAG_PERFORMANCE_SEED_CATEGORIES: list[tuple[str, str]] = [
-    ("https://www.iagperformance.com/engine/exhausts/cat-back/", "catback"),
-    ("https://www.iagperformance.com/engine/exhausts/axle-back/", "axleback"),
+    ("https://www.iagperformance.com/engine/exhausts/cat-back/", "catback-exhaust"),
+    ("https://www.iagperformance.com/engine/exhausts/axle-back/", "axleback-exhaust"),
     ("https://www.iagperformance.com/engine/exhausts/downpipes-j-pipes/", "downpipe"),
-    ("https://www.iagperformance.com/engine/air-induction/air-intakes-hoses/", "intake"),
+    ("https://www.iagperformance.com/engine/air-induction/air-intakes-hoses/", "cold-air-intake"),
     ("https://www.iagperformance.com/engine/cooling/intercoolers/", "intercooler"),
-    ("https://www.iagperformance.com/engine/engine-management/tuners/", "tune"),
+    ("https://www.iagperformance.com/engine/engine-management/tuners/", "ecu-tune"),
     ("https://www.iagperformance.com/engine/turbos-superchargers/blow-off-valves/", "bov"),
     ("https://www.iagperformance.com/suspension/height-adjustment/coilovers/", "coilovers"),
     ("https://www.iagperformance.com/suspension/suspension-linkage/sway-bars/", "sway-bars"),
@@ -898,18 +898,18 @@ def _steeda_seed(category_path: str) -> str:
 
 STEEDA_SEED_CATEGORIES: list[tuple[str, str]] = [
     # S650 (2024-2026 Mustang)
-    (_steeda_seed("Mustang>2024-2026 Mustang>Exhaust>Cat-Back Exhaust"), "catback"),
-    (_steeda_seed("Mustang>2024-2026 Mustang>Exhaust>Axle-Back Exhaust"), "axleback"),
-    (_steeda_seed("Mustang>2024-2026 Mustang>Induction"), "intake"),
-    (_steeda_seed("Mustang>2024-2026 Mustang>Suspension>Lowering Springs"), "springs"),
+    (_steeda_seed("Mustang>2024-2026 Mustang>Exhaust>Cat-Back Exhaust"), "catback-exhaust"),
+    (_steeda_seed("Mustang>2024-2026 Mustang>Exhaust>Axle-Back Exhaust"), "axleback-exhaust"),
+    (_steeda_seed("Mustang>2024-2026 Mustang>Induction"), "cold-air-intake"),
+    (_steeda_seed("Mustang>2024-2026 Mustang>Suspension>Lowering Springs"), "lowering-springs"),
     (_steeda_seed("Mustang>2024-2026 Mustang>Suspension>Shocks & Struts"), "coilovers"),
     # S550 (2015-2023 Mustang) — much deeper catalog. Note the typo
     # "Exhuast" in the cat-back leaf name; mirroring it exactly.
-    (_steeda_seed("Mustang>2015-2023 Mustang>Exhaust>Cat-Back Exhuast"), "catback"),
-    (_steeda_seed("Mustang>2015-2023 Mustang>Exhaust>Axle-Back Exhaust"), "axleback"),
-    (_steeda_seed("Mustang>2015-2023 Mustang>Induction>Cold Air Intake"), "intake"),
+    (_steeda_seed("Mustang>2015-2023 Mustang>Exhaust>Cat-Back Exhuast"), "catback-exhaust"),
+    (_steeda_seed("Mustang>2015-2023 Mustang>Exhaust>Axle-Back Exhaust"), "axleback-exhaust"),
+    (_steeda_seed("Mustang>2015-2023 Mustang>Induction>Cold Air Intake"), "cold-air-intake"),
     (_steeda_seed("Mustang>2015-2023 Mustang>Suspension>Coilovers"), "coilovers"),
-    (_steeda_seed("Mustang>2015-2023 Mustang>Suspension>Lowering Springs"), "springs"),
+    (_steeda_seed("Mustang>2015-2023 Mustang>Suspension>Lowering Springs"), "lowering-springs"),
 ]
 
 
@@ -1010,11 +1010,11 @@ async def _live_scrape_steeda(
 # performance part not available through FCP Euro's OEM-replacement
 # inventory.
 MOTORSPORT034_SEED_CATEGORIES: list[tuple[str, str]] = [
-    ("https://www.034motorsport.com/cold-air-intakes.html", "intake"),
+    ("https://www.034motorsport.com/cold-air-intakes.html", "cold-air-intake"),
     # Exhaust-upgrades is dominated by Res-X resonator deletes and
     # cast-stainless racing catalyst (catless downpipe-class) parts,
     # not true catbacks. Mapping to ``downpipe`` is the closest fit
-    # in our 18-category slug set.
+    # in our slug set.
     ("https://www.034motorsport.com/exhaust-upgrades.html", "downpipe"),
 ]
 
