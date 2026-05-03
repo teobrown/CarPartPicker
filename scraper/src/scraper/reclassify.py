@@ -92,12 +92,18 @@ def main() -> None:
                     else:
                         counts["llm"] += 1
 
-            with conn.transaction():
-                with conn.cursor() as cur:
-                    cur.execute(
-                        "UPDATE parts SET category_id = %s WHERE id = %s",
-                        (target_id, part_id),
-                    )
+            try:
+                with conn.transaction():
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "UPDATE parts SET category_id = %s WHERE id = %s",
+                            (target_id, part_id),
+                        )
+            except psycopg.Error as e:
+                # Don't crash the whole run on a transient DB blip — log and
+                # leave the part on its old category. Re-running the script
+                # picks it up again because the WHERE filter still matches.
+                log.warning("update failed for part %d: %s", part_id, e)
             if i % 50 == 0:
                 log.info("progress: %d/%d (heuristic=%d llm=%d misc=%d)",
                          i, len(rows), counts["heuristic"], counts["llm"], counts["misc"])
