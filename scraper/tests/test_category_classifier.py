@@ -103,24 +103,27 @@ from unittest.mock import patch
 from scraper.category_classifier import classify_with_llm, classify
 
 
-def test_llm_fallback_returns_one_of_the_valid_leaves():
+def test_llm_fallback_returns_one_of_the_valid_leaves(monkeypatch, tmp_path):
     """When heuristic and prior both miss, LLM is called and result is filtered
     against the known leaf set."""
+    monkeypatch.setattr("scraper.category_classifier._LLM_CACHE_DIR", tmp_path / "cache")
     with patch("scraper.category_classifier._call_deepseek") as mock_llm:
         mock_llm.return_value = "intercooler"
         out = classify_with_llm("Mystery Aluminum Box", "Mishimoto", current_slug=None)
         assert out == "intercooler"
 
 
-def test_llm_returning_invalid_slug_yields_none():
+def test_llm_returning_invalid_slug_yields_none(monkeypatch, tmp_path):
+    monkeypatch.setattr("scraper.category_classifier._LLM_CACHE_DIR", tmp_path / "cache")
     with patch("scraper.category_classifier._call_deepseek") as mock_llm:
         mock_llm.return_value = "fake-slug-not-a-leaf"
         out = classify_with_llm("Strange Thing", "Brand", current_slug=None)
         assert out is None
 
 
-def test_classify_runs_heuristic_first_then_llm():
+def test_classify_runs_heuristic_first_then_llm(monkeypatch, tmp_path):
     """Heuristic should win for a clearly-named part; LLM should not be called."""
+    monkeypatch.setattr("scraper.category_classifier._LLM_CACHE_DIR", tmp_path / "cache")
     with patch("scraper.category_classifier._call_deepseek") as mock_llm:
         mock_llm.return_value = "intercooler"
         out = classify("AEM Cold Air Intake", "AEM", "intake-old")
@@ -128,7 +131,8 @@ def test_classify_runs_heuristic_first_then_llm():
         mock_llm.assert_not_called()
 
 
-def test_classify_falls_through_to_llm_when_heuristic_misses():
+def test_classify_falls_through_to_llm_when_heuristic_misses(monkeypatch, tmp_path):
+    monkeypatch.setattr("scraper.category_classifier._LLM_CACHE_DIR", tmp_path / "cache")
     with patch("scraper.category_classifier._call_deepseek") as mock_llm:
         mock_llm.return_value = "wheels"
         out = classify("Mystery Round Metal Thing", "GenericBrand", current_slug=None)
