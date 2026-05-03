@@ -25,7 +25,7 @@ beforeAll(async () => {
   const [c] = await db
     .select()
     .from(categories)
-    .where(eq(categories.slug, 'intake'))
+    .where(eq(categories.slug, 'cold-air-intake'))
     .limit(1);
   if (!c) throw new Error('categories must be seeded; run seed.test.ts first');
   categoryId = c.id;
@@ -102,7 +102,7 @@ beforeAll(async () => {
 describe('listCategoryPartsRankedForVehicle', () => {
   it('returns parts in the given category with status "unknown" when vehicleId is null', async () => {
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'intake',
+      categorySlug: 'cold-air-intake',
       vehicleId: null,
     });
     expect(rows.length).toBeGreaterThanOrEqual(3);
@@ -118,7 +118,7 @@ describe('listCategoryPartsRankedForVehicle', () => {
 
   it('ranks a fitting part above one with no matching rule for the given vehicle', async () => {
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'intake',
+      categorySlug: 'cold-air-intake',
       vehicleId,
     });
     const fittingIdx = rows.findIndex((r) => r.id === fittingPartId);
@@ -140,7 +140,7 @@ describe('listCategoryPartsRankedForVehicle', () => {
 
   it('filters by brand or model substring (case-insensitive)', async () => {
     const byBrand = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'intake',
+      categorySlug: 'cold-air-intake',
       vehicleId,
       search: 'cobb',
     });
@@ -148,7 +148,7 @@ describe('listCategoryPartsRankedForVehicle', () => {
     expect(byBrand[0].id).toBe(fittingPartId);
 
     const byModel = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'intake',
+      categorySlug: 'cold-air-intake',
       vehicleId,
       search: 'CONE',
     });
@@ -173,7 +173,7 @@ describe('listCategoryPartsRankedForVehicle make-name heuristic', () => {
     const [c] = await db
       .select()
       .from(categories)
-      .where(eq(categories.slug, 'intake'))
+      .where(eq(categories.slug, 'cold-air-intake'))
       .limit(1);
     if (!c) throw new Error('categories must be seeded; run seed.test.ts first');
     vwCategoryId = c.id;
@@ -195,7 +195,7 @@ describe('listCategoryPartsRankedForVehicle make-name heuristic', () => {
     if (!vendor) throw new Error('vendors must be seeded; run seed.test.ts first');
     vwVendorId = vendor.id;
 
-    // Two parts in 'intake', NEITHER with a fitment_rules row.
+    // Two parts in 'cold-air-intake', NEITHER with a fitment_rules row.
     // - "Volkswagen Golf R Intake": matches MAKE_SYNONYMS for Volkswagen → stays "unknown"
     // - "Subaru WRX Intake": matches MAKE_SYNONYMS for Subaru, NOT for Volkswagen → "incompatible"
     const inserted = await db
@@ -233,7 +233,7 @@ describe('listCategoryPartsRankedForVehicle make-name heuristic', () => {
 
   it('demotes parts with no rule and no make-name match to incompatible', async () => {
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'intake',
+      categorySlug: 'cold-air-intake',
       vehicleId: vwVehicleId,
     });
     const vw = rows.find((r) => r.id === vwGolfPartId);
@@ -249,7 +249,7 @@ describe('listCategoryPartsRankedForVehicle make-name heuristic', () => {
 
   it('hideIncompatible filters out parts demoted to incompatible by the heuristic', async () => {
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'intake',
+      categorySlug: 'cold-air-intake',
       vehicleId: vwVehicleId,
       hideIncompatible: true,
     });
@@ -261,7 +261,7 @@ describe('listCategoryPartsRankedForVehicle make-name heuristic', () => {
 
   it('hideIncompatible is a no-op when vehicleId is null (no signal to filter on)', async () => {
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'intake',
+      categorySlug: 'cold-air-intake',
       vehicleId: null,
       hideIncompatible: true,
     });
@@ -285,7 +285,7 @@ describe('listCategoryPartsRankedForVehicle year-aware rules', () => {
       sql`TRUNCATE TABLE parts, vendor_listings, fitment_rules RESTART IDENTITY CASCADE`,
     );
 
-    const [c] = await db.select().from(categories).where(eq(categories.slug, 'catback')).limit(1);
+    const [c] = await db.select().from(categories).where(eq(categories.slug, 'catback-exhaust')).limit(1);
     if (!c) throw new Error('categories must be seeded; run seed.test.ts first');
     intakeCategoryId = c.id;
 
@@ -388,7 +388,7 @@ describe('listCategoryPartsRankedForVehicle year-aware rules', () => {
 
   it('out-of-range year on a same-model rule marks the part incompatible', async () => {
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'catback',
+      categorySlug: 'catback-exhaust',
       vehicleId: mustang2020GtId,
     });
     const old = rows.find((r) => r.id === oldMustangPartId);
@@ -398,7 +398,7 @@ describe('listCategoryPartsRankedForVehicle year-aware rules', () => {
 
   it('matches when the vehicle year falls inside any rule range', async () => {
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'catback',
+      categorySlug: 'catback-exhaust',
       vehicleId: mustang2003GtId,
     });
     const multi = rows.find((r) => r.id === multiYearMustangPartId);
@@ -409,7 +409,7 @@ describe('listCategoryPartsRankedForVehicle year-aware rules', () => {
     // For 2020: neither 1999-2004 nor 2015-2017 contains 2020 → incompatible (the
     // part has Mustang rules and your year isn't in any of them).
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'catback',
+      categorySlug: 'catback-exhaust',
       vehicleId: mustang2020GtId,
     });
     const multi = rows.find((r) => r.id === multiYearMustangPartId);
@@ -418,7 +418,7 @@ describe('listCategoryPartsRankedForVehicle year-aware rules', () => {
 
   it('hideIncompatible filters year-mismatched rule parts', async () => {
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'catback',
+      categorySlug: 'catback-exhaust',
       vehicleId: mustang2020GtId,
       hideIncompatible: true,
     });
@@ -465,7 +465,7 @@ describe('listCategoryPartsRankedForVehicle year-aware rules', () => {
     const eco = ecoVehicle.find((m) => m.subModel === 'Ecoboost' && m.year === 2020);
     if (!eco) throw new Error('Mustang Ecoboost 2020 must be seeded');
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'catback',
+      categorySlug: 'catback-exhaust',
       vehicleId: eco.id,
     });
     const row = rows.find((r) => r.id === extra.id);
@@ -479,7 +479,7 @@ describe('listCategoryPartsRankedForVehicle year-aware rules', () => {
     // heuristic returns incompatible, but with the no-fitment-match caveat,
     // not the year-mismatch caveat — proving Stage 2 didn't fire.
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'catback',
+      categorySlug: 'catback-exhaust',
       vehicleId: mustang2020GtId,
     });
     const sub = rows.find((r) => r.id === subaruOnlyPartId);
@@ -523,11 +523,11 @@ describe('listCategoryPartsRankedForVehicle year-aware rules', () => {
     if (!eco2020) throw new Error('Mustang Ecoboost 2020 must be seeded');
 
     const ecoRows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'catback',
+      categorySlug: 'catback-exhaust',
       vehicleId: eco2020.id,
     });
     const gtRows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'catback',
+      categorySlug: 'catback-exhaust',
       vehicleId: mustang2003GtId, // 2017 GT, in range
     });
     expect(ecoRows.find((r) => r.id === shared.id)?.status).toBe('fits');
@@ -565,7 +565,7 @@ describe('listCategoryPartsRankedForVehicle year-aware rules', () => {
     });
 
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'catback',
+      categorySlug: 'catback-exhaust',
       vehicleId: mustang2020GtId,
     });
     const row = rows.find((r) => r.id === noisy.id);
@@ -606,7 +606,7 @@ describe('listCategoryPartsRankedForVehicle year-aware rules', () => {
     });
 
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'catback',
+      categorySlug: 'catback-exhaust',
       vehicleId: mustang2020GtId,
     });
     const row = rows.find((r) => r.id === generic.id);
@@ -653,7 +653,7 @@ describe('listCategoryPartsRankedForVehicle year-aware rules', () => {
       .limit(1);
     if (!tr[0]) throw new Error('Civic Type R must be seeded');
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'catback',
+      categorySlug: 'catback-exhaust',
       vehicleId: tr[0].id,
     });
     const row = rows.find((r) => r.id === trimPart.id);
@@ -680,7 +680,7 @@ describe('listCategoryPartsRankedForVehicle model-aware heuristic', () => {
       sql`TRUNCATE TABLE parts, vendor_listings, fitment_rules RESTART IDENTITY CASCADE`,
     );
 
-    const [c] = await db.select().from(categories).where(eq(categories.slug, 'intake')).limit(1);
+    const [c] = await db.select().from(categories).where(eq(categories.slug, 'cold-air-intake')).limit(1);
     intakeCategoryId = c.id;
 
     const [si] = await db.select().from(vehicles).where(eq(vehicles.model, 'Civic Si')).limit(1);
@@ -745,7 +745,7 @@ describe('listCategoryPartsRankedForVehicle model-aware heuristic', () => {
 
   it('Type R intake does NOT match Civic Si vehicle (model-aware)', async () => {
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'intake',
+      categorySlug: 'cold-air-intake',
       vehicleId: civicSiVehicleId,
     });
     const typeR = rows.find((r) => r.id === typeRPartId);
@@ -756,7 +756,7 @@ describe('listCategoryPartsRankedForVehicle model-aware heuristic', () => {
 
   it('Si intake does NOT match Civic Type R vehicle (model-aware)', async () => {
     const rows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'intake',
+      categorySlug: 'cold-air-intake',
       vehicleId: civicTypeRVehicleId,
     });
     const typeR = rows.find((r) => r.id === typeRPartId);
@@ -767,14 +767,14 @@ describe('listCategoryPartsRankedForVehicle model-aware heuristic', () => {
 
   it('Mustang GT and Ecoboost intakes are mutually exclusive (sub-model-aware)', async () => {
     const gtRows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'intake',
+      categorySlug: 'cold-air-intake',
       vehicleId: mustangGtVehicleId,
     });
     expect(gtRows.find((r) => r.id === mustangGtPartId)?.status).toBe('unknown');
     expect(gtRows.find((r) => r.id === mustangEcoboostPartId)?.status).toBe('incompatible');
 
     const ecoRows = await listCategoryPartsRankedForVehicle({
-      categorySlug: 'intake',
+      categorySlug: 'cold-air-intake',
       vehicleId: mustangEcoboostVehicleId,
     });
     expect(ecoRows.find((r) => r.id === mustangGtPartId)?.status).toBe('incompatible');
