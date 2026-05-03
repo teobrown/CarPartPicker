@@ -8,6 +8,7 @@ import {
   boolean,
   timestamp,
   uniqueIndex,
+  unique,
   index,
   bigserial,
   bigint,
@@ -34,13 +35,14 @@ export const vehicles = pgTable(
     maxNoRubWidthIn: numeric('max_no_rub_width_in', { precision: 4, scale: 1, mode: 'number' }),
   },
   (t) => ({
-    uq: uniqueIndex('vehicles_make_model_year_trim_sub_model_uq').on(
-      t.make,
-      t.model,
-      t.year,
-      t.trim,
-      t.subModel,
-    ),
+    // NOTE: nullsNotDistinct() — without it, every (make, model, year, trim,
+    // null sub_model) row is treated as distinct from another (..., null
+    // sub_model) row by Postgres' default UNIQUE semantics, so re-running the
+    // seed re-inserts duplicates instead of conflicting. Civic Si had 6x
+    // dupes per year before this. Phase-1 cleanup migration: 0005.
+    uq: unique('vehicles_make_model_year_trim_sub_model_uq')
+      .on(t.make, t.model, t.year, t.trim, t.subModel)
+      .nullsNotDistinct(),
     genIdx: index('vehicles_generation_idx').on(t.generation),
   })
 );

@@ -36,6 +36,13 @@
       "when": 1777592143544,
       "tag": "0004_skinny_satana",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777827863319,
+      "tag": "0005_magenta_moon_knight",
+      "breakpoints": true
     }
   ]
 }
