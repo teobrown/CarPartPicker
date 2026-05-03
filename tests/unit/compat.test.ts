@@ -271,6 +271,398 @@ describe('listCategoryPartsRankedForVehicle make-name heuristic', () => {
   });
 });
 
+describe('listCategoryPartsRankedForVehicle year-aware rules', () => {
+  let intakeCategoryId: number;
+  let mustang2020GtId: number;
+  let mustang2003GtId: number;
+  let oldMustangPartId: number;
+  let multiYearMustangPartId: number;
+  let subaruOnlyPartId: number;
+  let vendorIdLocal: number;
+
+  beforeAll(async () => {
+    await db.execute(
+      sql`TRUNCATE TABLE parts, vendor_listings, fitment_rules RESTART IDENTITY CASCADE`,
+    );
+
+    const [c] = await db.select().from(categories).where(eq(categories.slug, 'catback')).limit(1);
+    if (!c) throw new Error('categories must be seeded; run seed.test.ts first');
+    intakeCategoryId = c.id;
+
+    const mustangs = await db.select().from(vehicles).where(eq(vehicles.model, 'Mustang')).limit(100);
+    const m2020 = mustangs.find((m) => m.subModel === 'GT' && m.year === 2020);
+    // 2003 isn't in seeds (S550 starts 2015), but 2017 GT is. Use 2017 as the "in-range" stand-in.
+    // The point is: same model, year inside the rule range.
+    const mInRange = mustangs.find((m) => m.subModel === 'GT' && m.year === 2017);
+    if (!m2020 || !mInRange) {
+      throw new Error('Mustang GT 2020 + 2017 must be seeded');
+    }
+    mustang2020GtId = m2020.id;
+    mustang2003GtId = mInRange.id;
+
+    const [vendor] = await db.select().from(vendors).where(eq(vendors.slug, 'americanmuscle')).limit(1);
+    vendorIdLocal = vendor.id;
+
+    const inserted = await db
+      .insert(parts)
+      .values([
+        {
+          categoryId: intakeCategoryId,
+          brand: 'C&L',
+          model: 'Cat-Back',
+          name: 'C&L Cat-Back Exhaust with Polished Tips (99-04 Mustang GT, Mach 1)',
+        },
+        {
+          categoryId: intakeCategoryId,
+          brand: 'Roush',
+          model: 'Cat-Back',
+          name: 'Roush Cat-Back Exhaust (Mustang GT)',
+        },
+        {
+          categoryId: intakeCategoryId,
+          brand: 'Cobb',
+          model: 'Cat-Back',
+          name: 'Cobb Cat-Back (2008-2014 Subaru WRX)',
+        },
+      ])
+      .returning();
+    oldMustangPartId = inserted[0].id;
+    multiYearMustangPartId = inserted[1].id;
+    subaruOnlyPartId = inserted[2].id;
+
+    for (const p of inserted) {
+      await db.insert(vendorListings).values({
+        partId: p.id,
+        vendorId: vendorIdLocal,
+        vendorUrl: `https://example.com/${p.id}`,
+        priceCents: 30000,
+        inStock: true,
+      });
+    }
+
+    // Old Mustang part: rule says 1999-2004 ONLY.
+    await db.insert(fitmentRules).values({
+      partId: oldMustangPartId,
+      make: 'Ford',
+      model: 'Mustang',
+      yearStart: 1999,
+      yearEnd: 2004,
+      status: 'fits',
+      source: 'test',
+    });
+
+    // Multi-year Mustang: rules for two non-overlapping ranges. 2017 is in range; 2020 is not.
+    await db.insert(fitmentRules).values([
+      {
+        partId: multiYearMustangPartId,
+        make: 'Ford',
+        model: 'Mustang',
+        yearStart: 1999,
+        yearEnd: 2004,
+        status: 'fits',
+        source: 'test',
+      },
+      {
+        partId: multiYearMustangPartId,
+        make: 'Ford',
+        model: 'Mustang',
+        yearStart: 2015,
+        yearEnd: 2017,
+        status: 'fits',
+        source: 'test',
+      },
+    ]);
+
+    // Subaru-only part: rule for WRX. For a Mustang vehicle there's no Mustang rule
+    // — should fall through to the heuristic, not be force-marked incompatible.
+    await db.insert(fitmentRules).values({
+      partId: subaruOnlyPartId,
+      make: 'Subaru',
+      model: 'WRX',
+      yearStart: 2008,
+      yearEnd: 2014,
+      status: 'fits',
+      source: 'test',
+    });
+  });
+
+  it('out-of-range year on a same-model rule marks the part incompatible', async () => {
+    const rows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'catback',
+      vehicleId: mustang2020GtId,
+    });
+    const old = rows.find((r) => r.id === oldMustangPartId);
+    expect(old?.status).toBe('incompatible');
+    expect(old?.caveat).toMatch(/1999.?2004/);
+  });
+
+  it('matches when the vehicle year falls inside any rule range', async () => {
+    const rows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'catback',
+      vehicleId: mustang2003GtId,
+    });
+    const multi = rows.find((r) => r.id === multiYearMustangPartId);
+    expect(multi?.status).toBe('fits');
+  });
+
+  it('respects multi-range rules — out-of-range year still incompatible even with sibling matching range', async () => {
+    // For 2020: neither 1999-2004 nor 2015-2017 contains 2020 → incompatible (the
+    // part has Mustang rules and your year isn't in any of them).
+    const rows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'catback',
+      vehicleId: mustang2020GtId,
+    });
+    const multi = rows.find((r) => r.id === multiYearMustangPartId);
+    expect(multi?.status).toBe('incompatible');
+  });
+
+  it('hideIncompatible filters year-mismatched rule parts', async () => {
+    const rows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'catback',
+      vehicleId: mustang2020GtId,
+      hideIncompatible: true,
+    });
+    const ids = rows.map((r) => r.id);
+    expect(ids).not.toContain(oldMustangPartId);
+  });
+
+  it('rule "fits" is demoted when part name explicitly names a different sub-model', async () => {
+    // Inject a part whose rule says it fits Mustang 2018-2023 (no sub-model
+    // differentiation) but whose name says "Mustang GT". For an Ecoboost
+    // vehicle the rule alone would match (model+year ok), but the heuristic
+    // model-conflict check on "Mustang GT" must demote it.
+    const [extra] = await db
+      .insert(parts)
+      .values({
+        categoryId: intakeCategoryId,
+        brand: 'Roush',
+        model: 'Cold Air Intake',
+        name: 'Roush Cold Air Intake (18-23 Mustang GT)',
+      })
+      .returning();
+    await db.insert(vendorListings).values({
+      partId: extra.id,
+      vendorId: vendorIdLocal,
+      vendorUrl: `https://example.com/${extra.id}`,
+      priceCents: 30000,
+      inStock: true,
+    });
+    await db.insert(fitmentRules).values({
+      partId: extra.id,
+      make: 'Ford',
+      model: 'Mustang',
+      yearStart: 2018,
+      yearEnd: 2023,
+      status: 'fits',
+      source: 'test',
+    });
+
+    const ecoVehicle = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.model, 'Mustang'))
+      .limit(50);
+    const eco = ecoVehicle.find((m) => m.subModel === 'Ecoboost' && m.year === 2020);
+    if (!eco) throw new Error('Mustang Ecoboost 2020 must be seeded');
+    const rows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'catback',
+      vehicleId: eco.id,
+    });
+    const row = rows.find((r) => r.id === extra.id);
+    expect(row?.status).toBe('incompatible');
+    expect(row?.caveat).toMatch(/match.*Mustang Ecoboost/);
+  });
+
+  it('rules for a different make+model do NOT lock the part to incompatible — heuristic still runs', async () => {
+    // Subaru-only part for a Mustang vehicle: no Mustang rule → falls to
+    // heuristic. "Subaru WRX" in name is not in Ford's MAKE_SYNONYMS, so the
+    // heuristic returns incompatible, but with the no-fitment-match caveat,
+    // not the year-mismatch caveat — proving Stage 2 didn't fire.
+    const rows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'catback',
+      vehicleId: mustang2020GtId,
+    });
+    const sub = rows.find((r) => r.id === subaruOnlyPartId);
+    expect(sub?.status).toBe('incompatible');
+    expect(sub?.caveat).toMatch(/No fitment match/);
+  });
+
+  it('shared-fit name (GT/V6/EcoBoost) is NOT demoted by the conflict heuristic', async () => {
+    // Codex critical: a multi-platform part name like "Steeda S550 Mustang
+    // GT/V6/EcoBoost Springs" hits both a positive (ecoboost) and negative
+    // (mustang gt) synonym for the Ecoboost vehicle. We trust the rule and
+    // do not demote — only an unambiguous opposite-only name should demote.
+    const [shared] = await db
+      .insert(parts)
+      .values({
+        categoryId: intakeCategoryId,
+        brand: 'Steeda',
+        model: 'Lowering Springs',
+        name: 'Steeda S550 Mustang GT/V6/EcoBoost Lowering Springs',
+      })
+      .returning();
+    await db.insert(vendorListings).values({
+      partId: shared.id,
+      vendorId: vendorIdLocal,
+      vendorUrl: `https://example.com/${shared.id}`,
+      priceCents: 30000,
+      inStock: true,
+    });
+    await db.insert(fitmentRules).values({
+      partId: shared.id,
+      make: 'Ford',
+      model: 'Mustang',
+      yearStart: 2015,
+      yearEnd: 2023,
+      status: 'fits',
+      source: 'test',
+    });
+
+    const allMustangs = await db.select().from(vehicles).where(eq(vehicles.model, 'Mustang')).limit(50);
+    const eco2020 = allMustangs.find((m) => m.subModel === 'Ecoboost' && m.year === 2020);
+    if (!eco2020) throw new Error('Mustang Ecoboost 2020 must be seeded');
+
+    const ecoRows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'catback',
+      vehicleId: eco2020.id,
+    });
+    const gtRows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'catback',
+      vehicleId: mustang2003GtId, // 2017 GT, in range
+    });
+    expect(ecoRows.find((r) => r.id === shared.id)?.status).toBe('fits');
+    expect(gtRows.find((r) => r.id === shared.id)?.status).toBe('fits');
+  });
+
+  it('caveat strings filter out garbage trims_included tokens', async () => {
+    // Codex medium #2: the caveat should not surface raw LLM noise like
+    // "Department of Transportation" or "max-width: 769px".
+    const [noisy] = await db
+      .insert(parts)
+      .values({
+        categoryId: intakeCategoryId,
+        brand: 'Test',
+        model: 'Old Mustang Part',
+        name: 'Test Old Mustang Part',
+      })
+      .returning();
+    await db.insert(vendorListings).values({
+      partId: noisy.id,
+      vendorId: vendorIdLocal,
+      vendorUrl: `https://example.com/${noisy.id}`,
+      priceCents: 30000,
+      inStock: true,
+    });
+    await db.insert(fitmentRules).values({
+      partId: noisy.id,
+      make: 'Ford',
+      model: 'Mustang',
+      yearStart: 1999,
+      yearEnd: 2004,
+      trimsIncluded: ['Department of Transportation', 'max-width: 769px', '2024-2026'],
+      status: 'fits',
+      source: 'test',
+    });
+
+    const rows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'catback',
+      vehicleId: mustang2020GtId,
+    });
+    const row = rows.find((r) => r.id === noisy.id);
+    expect(row?.status).toBe('incompatible');
+    expect(row?.caveat).toMatch(/1999.?2004/);
+    expect(row?.caveat).not.toMatch(/Department of Transportation|max-width|2024-2026/);
+  });
+
+  it('null model rules do NOT lock unrelated years to incompatible (Stage 2 only fires on explicit model claim)', async () => {
+    // Codex medium #3: a generic "fits some Ford" rule (model=null) shouldn't
+    // be treated as claiming Mustang. For an out-of-range year, the part
+    // should fall through to the heuristic, not be force-marked incompatible.
+    const [generic] = await db
+      .insert(parts)
+      .values({
+        categoryId: intakeCategoryId,
+        brand: 'Generic',
+        model: 'Ford Filter',
+        name: 'Generic Ford Filter Mustang Compatible',
+      })
+      .returning();
+    await db.insert(vendorListings).values({
+      partId: generic.id,
+      vendorId: vendorIdLocal,
+      vendorUrl: `https://example.com/${generic.id}`,
+      priceCents: 30000,
+      inStock: true,
+    });
+    // make=Ford, model=null, year out of range
+    await db.insert(fitmentRules).values({
+      partId: generic.id,
+      make: 'Ford',
+      model: null,
+      yearStart: 1999,
+      yearEnd: 2004,
+      status: 'fits',
+      source: 'test',
+    });
+
+    const rows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'catback',
+      vehicleId: mustang2020GtId,
+    });
+    const row = rows.find((r) => r.id === generic.id);
+    // Heuristic catches "Mustang" in name → "unknown", NOT incompatible-by-rule.
+    expect(row?.status).toBe('unknown');
+  });
+
+  it('trim filter recognizes seeded trims (Touring, High Performance, etc.)', async () => {
+    // Codex low #4: REAL_TRIM_PATTERN must include trims actually in seed.
+    // Build a Civic Type R rule with trims=['Touring'] and verify a Touring
+    // vehicle does NOT match. Civic Type R seeds use Base/Premium, not
+    // Touring — so a 2024 Type R should NOT match a Touring-only rule.
+    const [trimPart] = await db
+      .insert(parts)
+      .values({
+        categoryId: intakeCategoryId,
+        brand: 'Test',
+        model: 'Touring-Only',
+        name: 'Test Touring-Only Civic Part',
+      })
+      .returning();
+    await db.insert(vendorListings).values({
+      partId: trimPart.id,
+      vendorId: vendorIdLocal,
+      vendorUrl: `https://example.com/${trimPart.id}`,
+      priceCents: 30000,
+      inStock: true,
+    });
+    await db.insert(fitmentRules).values({
+      partId: trimPart.id,
+      make: 'Honda',
+      model: 'Civic Type R',
+      yearStart: 2023,
+      yearEnd: 2026,
+      trimsIncluded: ['Touring'],
+      status: 'fits',
+      source: 'test',
+    });
+
+    const tr = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.model, 'Civic Type R'))
+      .limit(1);
+    if (!tr[0]) throw new Error('Civic Type R must be seeded');
+    const rows = await listCategoryPartsRankedForVehicle({
+      categorySlug: 'catback',
+      vehicleId: tr[0].id,
+    });
+    const row = rows.find((r) => r.id === trimPart.id);
+    // 'Touring' is now canonical → enforced. Type R seeded trims are
+    // Base/Premium, so the rule should NOT match → incompatible via Stage 2.
+    expect(row?.status).toBe('incompatible');
+  });
+});
+
 describe('listCategoryPartsRankedForVehicle model-aware heuristic', () => {
   let intakeCategoryId: number;
   let civicSiVehicleId: number;

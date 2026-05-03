@@ -117,6 +117,48 @@ function partLooksRelevantToVehicle(
 }
 
 /**
+ * Strong-NO signal: part name explicitly mentions a sub-model that is not
+ * this vehicle's. e.g., "Mustang GT" in name when vehicle is Ecoboost, or
+ * "Type R" when vehicle is Civic Si. Used to override an LLM "fits" verdict
+ * — the synonym lists are hardcoded and reliable, the rule isn't.
+ *
+ * Multi-platform parts whose names list both sub-models in an OR style
+ * (e.g. "Steeda Springs (S550 Mustang GT/V6/EcoBoost)") will hit BOTH a
+ * positive AND a negative synonym. In that case we trust the rule and do
+ * not demote — only an unambiguous opposite-only mention triggers conflict.
+ */
+function partHasModelConflict(
+  partName: string,
+  partBrand: string,
+  vehicle: { make: string; model: string; subModel: string | null },
+): boolean {
+  const haystack = ` ${partName} ${partBrand} `.toLowerCase();
+  const key = vehicleMatchKey(vehicle);
+  const modelRules = MODEL_SYNONYMS[key];
+  if (!modelRules) return false;
+  const hasNegative = modelRules.no.some((s) => haystack.includes(s));
+  if (!hasNegative) return false;
+  const hasPositive = modelRules.yes.some((s) => haystack.includes(s));
+  return !hasPositive;
+}
+
+/**
+ * Canonical trim/sub-model token whitelist. Used to (a) decide whether
+ * `trimsIncluded` is real signal vs LLM-extraction noise (year ranges,
+ * CSS, body styles dumped into the field), and (b) sanitize caveat
+ * strings so users don't see "requires Department of Transportation
+ * trim". Match is case-insensitive and whole-string anchored.
+ *
+ * Update when seed adds new trims/sub-models. See `lib/db/seed/vehicles.ts`.
+ */
+const REAL_TRIM_PATTERN =
+  /^(base|premium|limited|sport[- ]?tech|core|circuit|morizo|gt|eco[- ]?boost|gt350|gt500|mach 1|cobra|performance pack|high performance|sport|club|touring|grand touring|rf|dcc|si|type[- ]?r|rs|sti|gti|golf r|dark horse|autobahn|s|se)$/i;
+
+function isRealTrim(t: string | null | undefined): boolean {
+  return REAL_TRIM_PATTERN.test((t ?? '').trim());
+}
+
+/**
  * Rank parts in a category by compatibility for a given vehicle. If vehicleId is null,
  * everything is "unknown".
  *
@@ -182,6 +224,22 @@ export async function listCategoryPartsRankedForVehicle(opts: {
     .from(fitmentRules)
     .where(inArray(fitmentRules.partId, partIds));
 
+  // LLM extraction often dumps non-trim noise into trims_included (year ranges,
+  // body-style fragments, exclusion phrases, even CSS). We enforce the trim
+  // filter ONLY when the list contains at least one entry that matches our
+  // canonical trim/sub-model pattern — otherwise the list is treated as
+  // informational and skipped. The model-aware name heuristic (applied later
+  // as a sanity check on rule "fits" verdicts) handles sub-model
+  // differentiation when the trim filter is bypassed this way.
+  function trimMatches(r: (typeof rules)[number]): boolean {
+    if (!r.trimsIncluded || r.trimsIncluded.length === 0) return true;
+    const realTrims = r.trimsIncluded.filter(isRealTrim);
+    if (realTrims.length === 0) return true; // all garbage, skip filter
+    const matchTrim = v.trim != null && realTrims.some((t) => t.toLowerCase() === v.trim!.toLowerCase());
+    const matchSub = v.subModel != null && realTrims.some((t) => t.toLowerCase() === v.subModel!.toLowerCase());
+    return matchTrim || matchSub;
+  }
+
   function ruleMatches(r: (typeof rules)[number]): boolean {
     if (r.make != null && r.make !== v.make) return false;
     if (r.model != null && r.model !== v.model) return false;
@@ -189,12 +247,7 @@ export async function listCategoryPartsRankedForVehicle(opts: {
     if (r.yearStart != null && v.year < r.yearStart) return false;
     if (r.yearEnd != null && v.year > r.yearEnd) return false;
     if (r.bodyStyle != null && r.bodyStyle !== v.bodyStyle) return false;
-    if (
-      r.trimsIncluded &&
-      r.trimsIncluded.length > 0 &&
-      (!v.trim || !r.trimsIncluded.includes(v.trim))
-    )
-      return false;
+    if (!trimMatches(r)) return false;
     if (
       r.trimsExcluded &&
       r.trimsExcluded.length > 0 &&
@@ -205,30 +258,113 @@ export async function listCategoryPartsRankedForVehicle(opts: {
     return true;
   }
 
-  const byPart: Record<number, { status: CompatStatus; caveat: string | null }> = {};
-  for (const rule of rules) {
-    if (!ruleMatches(rule)) continue;
-    const status = (rule.status as CompatStatus) ?? 'unknown';
-    const cur = byPart[rule.partId];
-    if (!cur || STATUS_PRIORITY[status] > STATUS_PRIORITY[cur.status]) {
-      byPart[rule.partId] = { status, caveat: rule.caveat };
-    }
+  // True when this rule explicitly names the vehicle's model (with optional
+  // matching make). Used to detect "the LLM/vendor told us about this part
+  // for THIS model — just for different years/trims/etc." When that's true
+  // and `ruleMatches` returns false, the part is genuinely incompatible:
+  // the rule is authoritative on year/trim bounds and must outrank the
+  // heuristic. We require r.model non-null so a generic "fits some Ford"
+  // rule (model=null) doesn't lock all out-of-range Ford parts to
+  // incompatible — those fall through to the heuristic instead.
+  function ruleClaimsModel(r: (typeof rules)[number]): boolean {
+    if (r.model == null) return false;
+    if (r.model !== v.model) return false;
+    if (r.make != null && r.make !== v.make) return false;
+    return true;
   }
+
+  function explainModelMissed(rs: (typeof rules)[number][]): string | null {
+    const ranges = new Set<string>();
+    const trims = new Set<string>();
+    for (const r of rs) {
+      if (r.yearStart != null || r.yearEnd != null) {
+        const a = r.yearStart != null ? String(r.yearStart) : '';
+        const b = r.yearEnd != null ? String(r.yearEnd) : 'newer';
+        ranges.add(a && b ? `${a}-${b}` : a || b);
+      }
+      // Filter trim noise — only surface canonical trims so the user-facing
+      // caveat doesn't say "requires Department of Transportation trim".
+      if (r.trimsIncluded) {
+        for (const t of r.trimsIncluded) {
+          if (isRealTrim(t)) trims.add(t);
+        }
+      }
+    }
+    const vehicleLabel = v.subModel
+      ? `${v.year} ${v.make} ${v.model} ${v.subModel}`
+      : `${v.year} ${v.make} ${v.model}`;
+    const parts: string[] = [];
+    if (ranges.size) parts.push(`Fits ${[...ranges].join(', ')}`);
+    if (trims.size) parts.push(`requires ${[...trims].join('/')} trim`);
+    if (!parts.length) return `Doesn't fit ${vehicleLabel}`;
+    return `${parts.join('; ')} — not ${vehicleLabel}`;
+  }
+
+  // Group rules by part. Decision per part is staged:
+  //   1. any rule matches → use highest-priority status,
+  //   2. else any rule names this make+model but missed (year/trim/etc) → incompatible,
+  //   3. else fall through to the model-name heuristic.
+  // A rule "fits" verdict is then sanity-checked against the model-aware name
+  // heuristic so LLM rule errors around sub-model differentiation can't make a
+  // GT-only part show as fits for an Ecoboost (or vice versa).
+  const rulesByPart = new Map<number, (typeof rules)[number][]>();
+  for (const r of rules) {
+    const list = rulesByPart.get(r.partId) ?? [];
+    list.push(r);
+    rulesByPart.set(r.partId, list);
+  }
+
+  const vehicleLabel = v.subModel ? `${v.make} ${v.model} ${v.subModel}` : `${v.make} ${v.model}`;
 
   const ranked = baseRows
     .map((r) => {
-      const rule = byPart[r.id];
-      if (rule) return { ...r, status: rule.status, caveat: rule.caveat };
-      // No matching fitment rule. With a vehicle selected, fall back to a model-aware
-      // name heuristic. Type R parts no longer match Civic Si vehicles, GTI parts no
-      // longer match Golf R, etc. — see MODEL_SYNONYMS for the full list of negative
-      // matches. Caveat tells the user why the part was filtered out.
-      const looksRelevant = partLooksRelevantToVehicle(r.name, r.brand, v);
-      const vehicleLabel = v.subModel ? `${v.make} ${v.model} ${v.subModel}` : `${v.make} ${v.model}`;
+      const partRules = rulesByPart.get(r.id) ?? [];
+      const heuristicSaysRelevant = partLooksRelevantToVehicle(r.name, r.brand, v);
+
+      // Stage 1: best matching rule.
+      let best: { status: CompatStatus; caveat: string | null } | null = null;
+      for (const rule of partRules) {
+        if (!ruleMatches(rule)) continue;
+        const status = (rule.status as CompatStatus) ?? 'unknown';
+        if (!best || STATUS_PRIORITY[status] > STATUS_PRIORITY[best.status]) {
+          best = { status, caveat: rule.caveat };
+        }
+      }
+      if (best) {
+        // Sanity-check positive verdicts against the model-conflict heuristic.
+        // If the part name explicitly names a different sub-model (e.g.,
+        // "Mustang GT" in name but vehicle is Ecoboost), demote — the LLM
+        // rule is unreliable on sub-model boundaries, the synonym lists are
+        // hardcoded. Absence of a positive name match is NOT a demotion
+        // signal (Cobb SF Intake fits a WRX even if "WRX" isn't in the name).
+        if (
+          (best.status === 'fits' || best.status === 'fits_with_caveat') &&
+          partHasModelConflict(r.name, r.brand, v)
+        ) {
+          return {
+            ...r,
+            status: 'incompatible' as CompatStatus,
+            caveat: `Part name doesn't match ${vehicleLabel}`,
+          };
+        }
+        return { ...r, status: best.status, caveat: best.caveat };
+      }
+
+      // Stage 2: rule explicitly names this make+model but didn't match → incompatible.
+      const modelClaims = partRules.filter(ruleClaimsModel);
+      if (modelClaims.length > 0) {
+        return {
+          ...r,
+          status: 'incompatible' as CompatStatus,
+          caveat: explainModelMissed(modelClaims),
+        };
+      }
+
+      // Stage 3: pure model-aware name heuristic.
       return {
         ...r,
-        status: looksRelevant ? ('unknown' as CompatStatus) : ('incompatible' as CompatStatus),
-        caveat: looksRelevant ? null : `No fitment match for ${vehicleLabel}`,
+        status: heuristicSaysRelevant ? ('unknown' as CompatStatus) : ('incompatible' as CompatStatus),
+        caveat: heuristicSaysRelevant ? null : `No fitment match for ${vehicleLabel}`,
       };
     })
     .sort((a, b) => STATUS_PRIORITY[b.status] - STATUS_PRIORITY[a.status]);
