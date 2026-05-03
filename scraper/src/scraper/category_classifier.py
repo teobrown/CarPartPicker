@@ -10,8 +10,11 @@ No DB access. The DB-aware orchestrator that walks rows and writes
 """
 from __future__ import annotations
 
+import logging
 import re
 from typing import Optional
+
+log = logging.getLogger(__name__)
 
 # Ordered: most-specific first. Each rule is (compiled_pattern, slug).
 # Rule precedence is by list order — the first matching rule wins.
@@ -187,7 +190,14 @@ def classify_with_llm(
         except (json.JSONDecodeError, OSError):
             pass
 
-    slug = _call_deepseek(name, brand)
+    try:
+        slug = _call_deepseek(name, brand)
+    except Exception as e:
+        # Don't crash the run on a transient API failure — log and skip.
+        # Caller (orchestrator) treats None as "couldn't classify, send to misc".
+        # Don't cache this; let the next run re-attempt.
+        log.warning("LLM classification failed for %r / %r: %s", name, brand, e)
+        return None
     if slug not in _VALID_LEAVES:
         slug = None
 

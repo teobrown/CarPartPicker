@@ -138,3 +138,16 @@ def test_classify_falls_through_to_llm_when_heuristic_misses(monkeypatch, tmp_pa
         out = classify("Mystery Round Metal Thing", "GenericBrand", current_slug=None)
         assert out == "wheels"
         mock_llm.assert_called_once()
+
+
+def test_llm_api_failure_returns_none_does_not_cache(monkeypatch, tmp_path):
+    """An API error must NOT crash the caller and MUST NOT poison the cache."""
+    monkeypatch.setattr("scraper.category_classifier._LLM_CACHE_DIR", tmp_path / "cache")
+    with patch("scraper.category_classifier._call_deepseek") as mock_llm:
+        mock_llm.side_effect = RuntimeError("simulated API outage")
+        out = classify_with_llm("Mystery Item", "Brand", current_slug=None)
+        assert out is None
+        # Cache directory should be empty — error path must not write.
+        cache_dir = tmp_path / "cache"
+        if cache_dir.exists():
+            assert list(cache_dir.iterdir()) == []
