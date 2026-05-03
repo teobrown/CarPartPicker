@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   listAllParts,
-  listCategoriesWithCounts,
+  listCategoriesGrouped,
   getCatalogStats,
 } from "@/lib/queries/parts";
 import { SiteHeader } from "@/app/components/site-header";
@@ -29,9 +29,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PartsCatalog() {
-  const [rows, categories, stats] = await Promise.all([
+  const [rows, groups, stats] = await Promise.all([
     listAllParts(),
-    listCategoriesWithCounts(),
+    listCategoriesGrouped(),
     getCatalogStats(),
   ]);
 
@@ -70,19 +70,30 @@ export default async function PartsCatalog() {
           </div>
         </section>
 
-        {/* category filter chips */}
+        {/* category filter — grouped by parent so 48 leaves don't render as a flat wall */}
         <section className="hairline-b bg-bg-deep">
-          <div className="mx-auto max-w-[1400px] px-6 py-4 flex items-center gap-3 overflow-x-auto">
-            <span className="eyebrow shrink-0 mr-2">FILTER /</span>
-            <CategoryChip href="/parts" label="ALL" count={rows.length} active />
-            {categories.map((c) => (
-              <CategoryChip
-                key={c.slug}
-                href={`/parts/${c.slug}`}
-                label={c.name}
-                count={c.partCount}
-              />
-            ))}
+          <div className="mx-auto max-w-[1400px] px-6 py-5 flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <span className="eyebrow shrink-0 mr-2">FILTER /</span>
+              <CategoryChip href="/parts" label="ALL" count={rows.length} active />
+            </div>
+            <ul className="flex flex-col gap-3">
+              {groups.map((g) => (
+                <li key={g.parentSlug} className="flex items-baseline gap-3 flex-wrap">
+                  <span className="eyebrow text-fg-muted shrink-0 min-w-[140px]">
+                    {g.parentName} <span className="text-fg-dim tabular">({g.totalParts})</span>
+                  </span>
+                  {g.leaves.map((c) => (
+                    <CategoryChip
+                      key={c.slug}
+                      href={`/parts/${c.slug}`}
+                      label={c.name}
+                      count={c.partCount}
+                    />
+                  ))}
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 

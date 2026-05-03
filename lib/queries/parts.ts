@@ -170,6 +170,64 @@ export type CategorySummary = {
   partCount: number;
 };
 
+export type CategoryGroup = {
+  parentSlug: string;
+  parentName: string;
+  totalParts: number;
+  leaves: CategorySummary[];
+};
+
+/**
+ * Picker-visible leaves grouped under their parent. Used by the catalog
+ * index, the homepage category band, and the build-editor add-part menu.
+ * Parents and `misc` are excluded — same filter as `listCategoriesWithCounts`,
+ * just shaped so consumers can render parent headers + child links instead
+ * of a flat 48-row list.
+ *
+ * Single round-trip via a self-join. Output is ordered by parent.id then
+ * leaf.id (display order matches the seed).
+ */
+export async function listCategoriesGrouped(): Promise<CategoryGroup[]> {
+  const rows = await db.execute<{
+    parent_slug: string;
+    parent_name: string;
+    leaf_slug: string;
+    leaf_name: string;
+    part_count: number;
+  }>(sql`
+    SELECT
+      parent.slug AS parent_slug,
+      parent.name AS parent_name,
+      leaf.slug   AS leaf_slug,
+      leaf.name   AS leaf_name,
+      COUNT(p.id)::int AS part_count
+    FROM categories leaf
+    JOIN categories parent ON parent.id = leaf.parent_id
+    LEFT JOIN parts p ON p.category_id = leaf.id
+    WHERE leaf.hidden_from_picker = false
+      AND parent.hidden_from_picker = false
+    GROUP BY parent.id, parent.slug, parent.name, leaf.id, leaf.slug, leaf.name
+    ORDER BY parent.id, leaf.id
+  `);
+
+  const groups: CategoryGroup[] = [];
+  let cur: CategoryGroup | null = null;
+  for (const r of rows) {
+    if (cur === null || cur.parentSlug !== r.parent_slug) {
+      cur = {
+        parentSlug: r.parent_slug,
+        parentName: r.parent_name,
+        totalParts: 0,
+        leaves: [],
+      };
+      groups.push(cur);
+    }
+    cur.leaves.push({ slug: r.leaf_slug, name: r.leaf_name, partCount: r.part_count });
+    cur.totalParts += r.part_count;
+  }
+  return groups;
+}
+
 /**
  * Picker-visible leaves only: rows that are children of a parent group AND
  * NOT flagged `hidden_from_picker`. Used by the homepage, the catalog index
