@@ -76,12 +76,13 @@ describe('categories seed', () => {
 });
 
 describe('vendors seed', () => {
-  it('inserts the 6 launch vendors', async () => {
+  it('inserts every launch and Phase 1 vendor', async () => {
     const rows = await db.select().from(vendors);
     const slugs = rows.map((r) => r.slug).sort();
     expect(slugs).toEqual([
-      'americanmuscle', 'ebay-motors', 'ecs-tuning',
-      'fcp-euro', 'rallysport-direct', 'summit-racing',
+      '034motorsport', '27won', 'americanmuscle', 'ebay-motors', 'ecs-tuning',
+      'fcp-euro', 'flyin-miata', 'iag-performance', 'maperformance',
+      'prl-motorsports', 'rallysport-direct', 'steeda', 'summit-racing',
     ]);
   });
 });
