@@ -406,6 +406,17 @@ PRL_MOTORSPORTS_SEED_CATEGORIES: list[tuple[str, str]] = [
     ("https://www.prlmotorsports.com/collections/collection-vendor-lowering-springs", "lowering-springs"),
     ("https://www.prlmotorsports.com/collections/collection-vendor-sway-bars-end-links", "sway-bars"),
     ("https://www.prlmotorsports.com/collections/collection-vendor-wings-spoilers", "spoiler-wing"),
+    # Civic Si deepening — probed 2026-05-03, yields confirmed:
+    #   air-filters-accessories  -> 31 products
+    #   chassis-braces           -> 10 products
+    #   aerodynamics             -> 14 products (lips/splitters/diffusers)
+    #   brakes-components        -> 22 products (pads/rotors/lines/BBKs)
+    # Defaults below are lenient; the post-scrape reclassifier (--target-slug)
+    # routes individual products to the right leaf via name regex + LLM.
+    ("https://www.prlmotorsports.com/collections/collection-vendor-air-filters-accessories", "air-filter"),
+    ("https://www.prlmotorsports.com/collections/chassis-braces", "strut-bar"),
+    ("https://www.prlmotorsports.com/collections/aerodynamics", "front-lip"),
+    ("https://www.prlmotorsports.com/collections/brakes-components", "big-brake-kit"),
 ]
 
 

@@ -231,10 +231,24 @@ export async function listCategoryPartsRankedForVehicle(opts: {
   // informational and skipped. The model-aware name heuristic (applied later
   // as a sanity check on rule "fits" verdicts) handles sub-model
   // differentiation when the trim filter is bypassed this way.
+  //
+  // Extra wrinkle: the LLM frequently re-extracts the trim hint that's
+  // already encoded in the model name (e.g. trims_included=['Si'] for a
+  // rule with model='Civic Si', or ['GTI'] when model='GTI'). The vehicle
+  // row carries trim='Base' for those — there's no separate Si/GTI/Type-R
+  // trim level — so the redundant token would falsely block the rule.
+  // Strip tokens that already appear in the model name before enforcing.
   function trimMatches(r: (typeof rules)[number]): boolean {
     if (!r.trimsIncluded || r.trimsIncluded.length === 0) return true;
-    const realTrims = r.trimsIncluded.filter(isRealTrim);
-    if (realTrims.length === 0) return true; // all garbage, skip filter
+    const modelLower = (r.model ?? '').toLowerCase();
+    const realTrims = r.trimsIncluded.filter((t) => {
+      if (!isRealTrim(t)) return false;
+      // Skip tokens already implied by the rule's model name.
+      const lc = t.toLowerCase().trim();
+      if (modelLower.includes(lc)) return false;
+      return true;
+    });
+    if (realTrims.length === 0) return true; // all garbage / redundant, skip filter
     const matchTrim = v.trim != null && realTrims.some((t) => t.toLowerCase() === v.trim!.toLowerCase());
     const matchSub = v.subModel != null && realTrims.some((t) => t.toLowerCase() === v.subModel!.toLowerCase());
     return matchTrim || matchSub;
