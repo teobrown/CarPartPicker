@@ -52,7 +52,7 @@ export async function SiteHeader({
 
         <nav className="hidden md:flex items-center gap-6 text-[12px] tracking-[0.08em] uppercase font-[family-name:var(--font-mono)] text-fg-muted">
           <NavLink href="/parts">Catalog</NavLink>
-          <NavLink href="/parts/intake">Categories</NavLink>
+          <NavLink href="/parts">Categories</NavLink>
           <span className="text-fg-dim">/ Builds <span className="text-signal-2">soon</span></span>
         </nav>
 

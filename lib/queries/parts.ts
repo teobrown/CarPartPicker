@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/client';
 import { parts, categories, vendorListings, vendors, vehicles } from '@/lib/db/schema';
-import { sql, eq, min, count, countDistinct } from 'drizzle-orm';
+import { sql, eq, min, count, countDistinct, and, isNotNull } from 'drizzle-orm';
 
 export type PartListRow = {
   id: number;
@@ -119,7 +119,13 @@ export async function getCatalogStats(): Promise<CatalogStats> {
   const [p] = await db.select({ n: count() }).from(parts);
   const [l] = await db.select({ n: count() }).from(vendorListings);
   const [vd] = await db.select({ n: count() }).from(vendors);
-  const [c] = await db.select({ n: count() }).from(categories);
+  // categoryCount surfaces in the homepage stats band as "Categories" — the
+  // user-facing number, so count only picker-visible leaves (no parent groups,
+  // no admin-only `misc`).
+  const [c] = await db
+    .select({ n: count() })
+    .from(categories)
+    .where(and(isNotNull(categories.parentId), eq(categories.hiddenFromPicker, false)));
   const [pg] = await db
     .select({ n: countDistinct(vehicles.model) })
     .from(vehicles);
@@ -164,6 +170,13 @@ export type CategorySummary = {
   partCount: number;
 };
 
+/**
+ * Picker-visible leaves only: rows that are children of a parent group AND
+ * NOT flagged `hidden_from_picker`. Used by the homepage, the catalog index
+ * (`/parts`), and the build-editor add-part menu — none of those should
+ * surface parent groups (which are headers, not browseable categories) or
+ * the admin-only `misc` row.
+ */
 export async function listCategoriesWithCounts(): Promise<CategorySummary[]> {
   const rows = await db
     .select({
@@ -173,6 +186,7 @@ export async function listCategoriesWithCounts(): Promise<CategorySummary[]> {
     })
     .from(categories)
     .leftJoin(parts, eq(parts.categoryId, categories.id))
+    .where(and(isNotNull(categories.parentId), eq(categories.hiddenFromPicker, false)))
     .groupBy(categories.id, categories.slug, categories.name)
     .orderBy(categories.id);
   return rows;

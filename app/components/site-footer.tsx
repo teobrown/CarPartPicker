@@ -18,8 +18,8 @@ export function SiteFooter() {
           <p className="eyebrow mb-3">Catalog</p>
           <ul className="space-y-2 body-sm">
             <li><Link href="/parts" className="hover:text-fg">All parts</Link></li>
-            <li><Link href="/parts/intake" className="hover:text-fg">Intake</Link></li>
-            <li><Link href="/parts/catback" className="hover:text-fg">Catback</Link></li>
+            <li><Link href="/parts/cold-air-intake" className="hover:text-fg">Cold Air Intake</Link></li>
+            <li><Link href="/parts/catback-exhaust" className="hover:text-fg">Catback</Link></li>
             <li><Link href="/parts/coilovers" className="hover:text-fg">Coilovers</Link></li>
             <li><Link href="/parts/wheels" className="hover:text-fg">Wheels</Link></li>
           </ul>
