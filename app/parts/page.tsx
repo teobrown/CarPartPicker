@@ -7,6 +7,7 @@ import {
 } from "@/lib/queries/parts";
 import { SiteHeader } from "@/app/components/site-header";
 import { SiteFooter } from "@/app/components/site-footer";
+import { PartImage } from "@/app/components/part-image";
 import { partSlug, formatPrice } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -101,11 +102,11 @@ export default async function PartsCatalog() {
         <section className="mx-auto max-w-[1400px] px-6">
           <div className="hairline-b py-3 grid grid-cols-12 gap-4 eyebrow text-[10px] sticky top-0 bg-bg z-10">
             <span className="col-span-1">IDX</span>
-            <span className="col-span-3">Brand / Model</span>
+            <span className="col-span-4">Brand / Model</span>
             <span className="col-span-3 hidden md:block">Description</span>
-            <span className="col-span-2">Category</span>
+            <span className="col-span-1">Category</span>
             <span className="col-span-2 text-right">Cheapest</span>
-            <span className="col-span-1 text-right">Vendors</span>
+            <span className="col-span-1 text-right">×</span>
           </div>
 
           {rows.length === 0 ? (
@@ -116,23 +117,26 @@ export default async function PartsCatalog() {
                 <li key={p.id}>
                   <Link
                     href={`/part/${partSlug(p.brand)}/${partSlug(p.model)}`}
-                    className="row-hover hairline-soft-b py-4 grid grid-cols-12 gap-4 items-baseline"
+                    className="row-hover hairline-soft-b py-4 grid grid-cols-12 gap-4 items-center"
                   >
-                    <span className="col-span-1 index-marker tabular">
+                    <span className="col-span-1 index-marker tabular self-start pt-1">
                       {String(i + 1).padStart(3, "0")}
                     </span>
-                    <span className="col-span-3 min-w-0">
-                      <span className="block text-[10px] tracking-[0.14em] uppercase font-[family-name:var(--font-mono)] text-fg-dim">
-                        {p.brand}
-                      </span>
-                      <span className="display-md text-base text-fg leading-tight truncate block">
-                        {p.model}
+                    <span className="col-span-4 min-w-0 flex items-center gap-4">
+                      <PartImage src={p.imageUrl} alt={`${p.brand} ${p.model}`} size="md" />
+                      <span className="min-w-0">
+                        <span className="block text-[10px] tracking-[0.14em] uppercase font-[family-name:var(--font-mono)] text-fg-dim">
+                          {p.brand}
+                        </span>
+                        <span className="display-md text-base text-fg leading-tight truncate block">
+                          {p.model}
+                        </span>
                       </span>
                     </span>
                     <span className="col-span-3 hidden md:block body-sm text-fg-muted truncate">
                       {p.name}
                     </span>
-                    <span className="col-span-2 text-[11px] tracking-[0.1em] uppercase font-[family-name:var(--font-mono)] text-fg-muted">
+                    <span className="col-span-1 text-[11px] tracking-[0.1em] uppercase font-[family-name:var(--font-mono)] text-fg-muted truncate">
                       {p.categorySlug}
                     </span>
                     <span className="col-span-2 figure text-fg text-right">

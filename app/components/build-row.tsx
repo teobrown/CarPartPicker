@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { PartPickerModal } from './part-picker-modal';
 import { CompatBadge } from './compat-badge';
+import { PartImage } from './part-image';
 import { removeItemAction } from '@/app/build/[slug]/edit-actions';
 import type { BuildItemRow } from '@/lib/queries/builds';
 import type { CompatStatus } from '@/lib/queries/compat';
@@ -40,13 +41,20 @@ export function BuildRow({
           <>
             <Link
               href={`/part/${partSlug(item.part.brand)}/${partSlug(item.part.model)}`}
-              className="col-span-4 min-w-0 block"
+              className="col-span-4 min-w-0 flex items-center gap-3"
             >
-              <span className="block text-[10px] tracking-[0.14em] uppercase font-[family-name:var(--font-mono)] text-fg-dim">
-                {item.part.brand}
-              </span>
-              <span className="display-md text-base text-fg leading-tight truncate block">
-                {item.part.model}
+              <PartImage
+                src={item.part.imageUrl}
+                alt={`${item.part.brand} ${item.part.model}`}
+                size="sm"
+              />
+              <span className="min-w-0">
+                <span className="block text-[10px] tracking-[0.14em] uppercase font-[family-name:var(--font-mono)] text-fg-dim">
+                  {item.part.brand}
+                </span>
+                <span className="display-md text-base text-fg leading-tight truncate block">
+                  {item.part.model}
+                </span>
               </span>
             </Link>
             <span className="col-span-2">

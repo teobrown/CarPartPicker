@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { addItemAction } from '@/app/build/[slug]/edit-actions';
 import { CompatBadge } from './compat-badge';
+import { PartImage } from './part-image';
 import { formatPrice } from '@/lib/format';
 import type { CompatStatus } from '@/lib/queries/compat';
 
@@ -20,6 +21,7 @@ type Row = {
   brand: string;
   model: string;
   name: string;
+  imageUrl: string | null;
   cheapestPriceCents: number | null;
   vendorCount: number;
   status: CompatStatus;
@@ -107,18 +109,21 @@ export function PartPickerModal(p: PartPickerProps) {
                     p.onClose();
                   })
                 }
-                className="row-hover hairline-soft-b py-3 px-5 grid grid-cols-12 gap-3 items-baseline w-full text-left disabled:opacity-50"
+                className="row-hover hairline-soft-b py-3 px-5 grid grid-cols-12 gap-3 items-center w-full text-left disabled:opacity-50"
                 disabled={isPending}
               >
-                <span className="col-span-1 index-marker tabular">
+                <span className="col-span-1 self-start pt-1 index-marker tabular">
                   {String(r.id).padStart(3, '0')}
                 </span>
-                <span className="col-span-4 min-w-0">
-                  <span className="block text-[10px] tracking-[0.14em] uppercase font-[family-name:var(--font-mono)] text-fg-dim">
-                    {r.brand}
-                  </span>
-                  <span className="display-md text-base text-fg leading-tight truncate block">
-                    {r.model}
+                <span className="col-span-4 min-w-0 flex items-center gap-3">
+                  <PartImage src={r.imageUrl} alt={`${r.brand} ${r.model}`} size="sm" />
+                  <span className="min-w-0">
+                    <span className="block text-[10px] tracking-[0.14em] uppercase font-[family-name:var(--font-mono)] text-fg-dim">
+                      {r.brand}
+                    </span>
+                    <span className="display-md text-base text-fg leading-tight truncate block">
+                      {r.model}
+                    </span>
                   </span>
                 </span>
                 <span className="col-span-3">

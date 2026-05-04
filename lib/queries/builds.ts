@@ -12,6 +12,7 @@ export type BuildItemRow = {
     model: string;
     name: string;
     categorySlug: string;
+    imageUrl: string | null;
     cheapestPriceCents: number | null;
     cheapestListingId: number | null;
     vendorCount: number;
@@ -81,6 +82,7 @@ export async function getBuild(slug: string): Promise<BuildDetail | null> {
       partModel: parts.model,
       name: parts.name,
       categorySlug: categories.slug,
+      imageUrl: parts.imageUrl,
     })
     .from(buildItems)
     .innerJoin(parts, eq(parts.id, buildItems.partId))
@@ -119,6 +121,7 @@ export async function getBuild(slug: string): Promise<BuildDetail | null> {
           model: r.partModel,
           name: r.name,
           categorySlug: r.categorySlug,
+          imageUrl: r.imageUrl,
           cheapestPriceCents: cheapestListing?.priceCents ?? null,
           cheapestListingId: cheapestListing?.id ?? null,
           vendorCount,

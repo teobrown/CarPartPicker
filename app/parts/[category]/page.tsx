@@ -7,6 +7,7 @@ import {
 } from "@/lib/queries/parts";
 import { SiteHeader } from "@/app/components/site-header";
 import { SiteFooter } from "@/app/components/site-footer";
+import { PartImage } from "@/app/components/part-image";
 import { partSlug, formatPrice } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -104,17 +105,20 @@ export default async function CategoryPage({
                 <li key={p.id}>
                   <Link
                     href={`/part/${partSlug(p.brand)}/${partSlug(p.model)}`}
-                    className="row-hover hairline-soft-b py-4 grid grid-cols-12 gap-4 items-baseline"
+                    className="row-hover hairline-soft-b py-4 grid grid-cols-12 gap-4 items-center"
                   >
-                    <span className="col-span-1 index-marker tabular">
+                    <span className="col-span-1 index-marker tabular self-start pt-1">
                       {String(i + 1).padStart(3, "0")}
                     </span>
-                    <span className="col-span-4 min-w-0">
-                      <span className="block text-[10px] tracking-[0.14em] uppercase font-[family-name:var(--font-mono)] text-fg-dim">
-                        {p.brand}
-                      </span>
-                      <span className="display-md text-base text-fg leading-tight truncate block">
-                        {p.model}
+                    <span className="col-span-4 min-w-0 flex items-center gap-4">
+                      <PartImage src={p.imageUrl} alt={`${p.brand} ${p.model}`} size="md" />
+                      <span className="min-w-0">
+                        <span className="block text-[10px] tracking-[0.14em] uppercase font-[family-name:var(--font-mono)] text-fg-dim">
+                          {p.brand}
+                        </span>
+                        <span className="display-md text-base text-fg leading-tight truncate block">
+                          {p.model}
+                        </span>
                       </span>
                     </span>
                     <span className="col-span-4 hidden md:block body-sm text-fg-muted truncate">

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getPartByBrandModel } from "@/lib/queries/parts";
 import { SiteHeader } from "@/app/components/site-header";
 import { SiteFooter } from "@/app/components/site-footer";
+import { PartImage } from "@/app/components/part-image";
 import { formatPrice } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -67,28 +68,46 @@ export default async function PartDetail({
       />
 
       <main className="flex-1">
-        {/* hero / spec sheet header */}
+        {/* hero — image specimen + headline cluster + spec sheet */}
         <section className="hairline-b">
           <div className="mx-auto max-w-[1400px] px-6 pt-12 pb-12 grid grid-cols-12 gap-8">
-            <div className="col-span-12 md:col-span-8">
-              <p className="eyebrow-signal mb-4" data-reveal="0">
+            {/* specimen image — left rail, sticks while user scrolls long descriptions */}
+            <div className="col-span-12 md:col-span-5 lg:col-span-4" data-reveal="0">
+              <div className="bracket-frame hairline bg-surface p-2">
+                <PartImage
+                  src={p.imageUrl}
+                  alt={`${p.brand} ${p.model}`}
+                  size="hero"
+                  index={p.categorySlug.toUpperCase()}
+                />
+              </div>
+              {/* tiny mono caption strip — feels like a museum/lab specimen tag */}
+              <div className="mt-3 flex items-baseline justify-between text-[10px] tracking-[0.14em] uppercase font-[family-name:var(--font-mono)] text-fg-dim">
+                <span>SPECIMEN / {p.categorySlug}</span>
+                <span className="tabular text-fg-muted">{p.brand}</span>
+              </div>
+            </div>
+
+            {/* headline cluster */}
+            <div className="col-span-12 md:col-span-7 lg:col-span-5">
+              <p className="eyebrow-signal mb-4" data-reveal="1">
                 [PART] · {p.categorySlug.toUpperCase()}
               </p>
               <p
                 className="text-[12px] tracking-[0.16em] uppercase font-[family-name:var(--font-mono)] text-fg-muted mb-2"
-                data-reveal="1"
+                data-reveal="2"
               >
                 {p.brand}
               </p>
-              <h1 className="display-xl text-[clamp(2.25rem,5.5vw,4.25rem)] leading-[1.02]" data-reveal="2">
+              <h1 className="display-xl text-[clamp(2rem,4.5vw,3.5rem)] leading-[1.02]" data-reveal="3">
                 {p.model}
                 <span className="text-signal">.</span>
               </h1>
-              <p className="body-sm mt-4 max-w-2xl" data-reveal="3">
+              <p className="body-sm mt-4 max-w-2xl" data-reveal="4">
                 {p.description ?? p.name}
               </p>
 
-              <div className="mt-10 flex flex-wrap items-center gap-4" data-reveal="4">
+              <div className="mt-10 flex flex-wrap items-center gap-4" data-reveal="5">
                 {sortedListings[0] && (
                   <a
                     href={`/go/${sortedListings[0].listingId}`}
@@ -106,8 +125,8 @@ export default async function PartDetail({
               </div>
             </div>
 
-            {/* spec sheet sidebar */}
-            <aside className="col-span-12 md:col-span-4" data-reveal="5">
+            {/* spec sheet sidebar — collapses below image+headline on md, sits beside on lg+ */}
+            <aside className="col-span-12 lg:col-span-3" data-reveal="6">
               <div className="bracket-frame hairline bg-surface p-5">
                 <p className="eyebrow-signal text-[10px] mb-4">SPEC SHEET</p>
                 <dl className="space-y-3 text-[12px] font-[family-name:var(--font-mono)]">
