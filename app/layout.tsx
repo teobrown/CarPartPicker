@@ -1,41 +1,20 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { dark } from "@clerk/themes";
 import "./globals.css";
 
-// Brand-tuned Clerk modal appearance. Match the brutalist editorial
-// aesthetic of the rest of the site — near-black warm bg, signal amber
-// accent, hairline borders, mono labels. Without these overrides the
-// default Clerk modal looks mid-2020s SaaS and clashes with the brand.
+// Use Clerk's official `dark` base theme for readable contrast on every
+// element (labels, helper text, divider lines, secondary buttons).
+// Earlier we hand-tuned variables and ended up with low-contrast
+// helper/secondary text that was hard to read. The signal-amber accent
+// and the square corners (borderRadius=0) layer on top of the dark base
+// without touching the other 30+ palette tokens Clerk manages.
 const clerkAppearance = {
+  baseTheme: dark,
   variables: {
     colorPrimary: "#F5C535",
-    colorBackground: "#1F1C19",
-    colorText: "#ECE7DF",
-    colorTextSecondary: "#8A8276",
-    colorInputBackground: "#161310",
-    colorInputText: "#ECE7DF",
-    colorNeutral: "#5A554C",
     borderRadius: "0",
-    fontFamily: "var(--font-display), system-ui, sans-serif",
-  },
-  elements: {
-    card: { boxShadow: "none", border: "1px solid #3A352E" },
-    formButtonPrimary: {
-      textTransform: "uppercase" as const,
-      letterSpacing: "0.14em",
-      fontSize: "12px",
-      color: "#1F1C19",
-    },
-    socialButtonsBlockButton: {
-      border: "1px solid #3A352E",
-      borderRadius: "0",
-    },
-    formFieldInput: {
-      border: "1px solid #3A352E",
-      borderRadius: "0",
-    },
-    footer: { background: "transparent" },
   },
 };
 
