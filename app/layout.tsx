@@ -58,6 +58,14 @@ export const metadata: Metadata = {
     title: "Carbuildr — Pit Wall",
     description: SHARE_DESCRIPTION,
   },
+  // Impact Radius affiliate-network site verification. Renders as
+  //   <meta name="impact-site-verification" content="...">
+  // Their docs example uses `value=`, but the HTML standard is `content=`
+  // and Impact's verifier accepts it. If they ever flag verification
+  // failure, swap to an inline JSX <meta> with the literal `value` attr.
+  other: {
+    "impact-site-verification": "44264c6e-3e57-4447-be1e-18982c8f6457",
+  },
 };
 
 export default function RootLayout({
