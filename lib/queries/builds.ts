@@ -10,8 +10,16 @@ export class BuildOwnershipError extends Error {
   }
 }
 
+// Drizzle's tx callback parameter type. We always run resolveBuildFor-
+// Mutation inside a db.transaction(...) so the row lock survives, so
+// the parameter is the transaction-scoped query interface, not the
+// top-level `db` (which has an extra `$client` field).
+type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 /**
- * Resolve a build's mutability for a caller.
+ * Resolve a build's mutability for a caller, taking a row lock so the
+ * answer can't be invalidated by a concurrent claim before the caller
+ * writes its mutation.
  *
  *   - returns { id, allowed: true }  if mutation is permitted
  *   - returns { id, allowed: false } if the build is claimed by someone else
@@ -21,20 +29,28 @@ export class BuildOwnershipError extends Error {
  *   - The build is anonymous (user_id IS NULL) — anyone with the slug edits.
  *   - OR the actor's Clerk id resolves to a local user whose id matches
  *     builds.user_id (the owner is editing their own build).
+ *
+ * MUST be called inside a `db.transaction(...)` and the `tx` MUST be
+ * passed in. The SELECT ... FOR UPDATE row-locks the matching builds
+ * row until commit, closing the TOCTOU window where an anonymous-build
+ * mutator could race a victim's /api/builds/claim and write through
+ * after the build was claimed (Codex review-5 finding).
  */
 async function resolveBuildForMutation(
+  tx: DbTx,
   slug: string,
   actorClerkId: string | null,
 ): Promise<{ id: number; allowed: boolean }> {
-  const [b] = await db
+  const [b] = await tx
     .select({ id: builds.id, userId: builds.userId })
     .from(builds)
     .where(eq(builds.slug, slug))
+    .for('update')
     .limit(1);
   if (!b) throw new Error(`build not found: ${slug}`);
   if (b.userId === null) return { id: b.id, allowed: true };
   if (!actorClerkId) return { id: b.id, allowed: false };
-  const [u] = await db
+  const [u] = await tx
     .select({ id: users.id })
     .from(users)
     .where(eq(users.clerkId, actorClerkId))
@@ -197,12 +213,7 @@ export async function addBuildItem(opts: {
   note?: string | null;
   actorClerkId: string | null;
 }): Promise<void> {
-  const b = await resolveBuildForMutation(opts.buildSlug, opts.actorClerkId);
-  if (!b.allowed) throw new BuildOwnershipError(opts.buildSlug);
-
-  // Look up the new part's category so we can replace any existing item in
-  // the same category — PCPartPicker semantics: one part per category slot.
-  // Also handles dup-click races (second insert overwrites the first).
+  // parts table is read-only relative to this flow — safe outside the tx.
   const [partRow] = await db
     .select({ id: parts.id, categoryId: parts.categoryId })
     .from(parts)
@@ -211,6 +222,14 @@ export async function addBuildItem(opts: {
   if (!partRow) throw new Error(`part not found: ${opts.partId}`);
 
   await db.transaction(async (tx) => {
+    // Resolve ownership inside the transaction with FOR UPDATE so a
+    // concurrent /api/builds/claim cannot promote the build out from
+    // under us between authorization and write.
+    const b = await resolveBuildForMutation(tx, opts.buildSlug, opts.actorClerkId);
+    if (!b.allowed) throw new BuildOwnershipError(opts.buildSlug);
+
+    // PCPartPicker semantics: one part per category slot. Drop any
+    // existing item in the same category before inserting.
     await tx
       .delete(buildItems)
       .where(
@@ -235,8 +254,15 @@ export async function removeBuildItem(opts: {
   partId: number;
   actorClerkId: string | null;
 }): Promise<void> {
-  const b = await resolveBuildForMutation(opts.buildSlug, opts.actorClerkId);
-  if (!b.allowed) throw new BuildOwnershipError(opts.buildSlug);
-  await db.delete(buildItems).where(sql`${buildItems.buildId} = ${b.id} AND ${buildItems.partId} = ${opts.partId}`);
-  await db.update(builds).set({ updatedAt: new Date() }).where(eq(builds.id, b.id));
+  await db.transaction(async (tx) => {
+    // Same TOCTOU rationale as addBuildItem — ownership resolved with a
+    // row lock inside the transaction so a mid-flight claim can't sneak
+    // a delete through after the build was claimed.
+    const b = await resolveBuildForMutation(tx, opts.buildSlug, opts.actorClerkId);
+    if (!b.allowed) throw new BuildOwnershipError(opts.buildSlug);
+    await tx
+      .delete(buildItems)
+      .where(sql`${buildItems.buildId} = ${b.id} AND ${buildItems.partId} = ${opts.partId}`);
+    await tx.update(builds).set({ updatedAt: new Date() }).where(eq(builds.id, b.id));
+  });
 }
