@@ -87,16 +87,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider appearance={clerkAppearance}>
-      <html
-        lang="en"
-        className={`${bricolage.variable} ${jetbrainsMono.variable} h-full antialiased`}
-      >
-        <body className="min-h-full flex flex-col bg-bg text-fg">
+    <html
+      lang="en"
+      className={`${bricolage.variable} ${jetbrainsMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col bg-bg text-fg">
+        <ClerkProvider appearance={clerkAppearance}>
           <div className="grain-overlay" aria-hidden="true" />
           {children}
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }
