@@ -9,6 +9,7 @@ from scraper.upsert import upsert_part
 from scraper.fitment_parser import parse_fitment
 from scraper.llm_fitment import parse_fitment_with_llm, extract_fitment_from_html
 from scraper.category_map import map_category
+from scraper.category_classifier import classify_heuristic
 from scraper.normalized import NormalizedPart
 from scraper.vendors import (
     fcp_euro,
@@ -69,13 +70,26 @@ def _process_and_upsert(
 ) -> int:
     """Upsert an iterable of parts. Each entry can be either a bare
     ``NormalizedPart`` (use the fuzzy ``category_hint`` mapper) or a
-    ``(part, slug_override)`` tuple (skip the mapper and use ``slug_override``).
+    ``(part, slug_override)`` tuple (use ``slug_override`` as a soft prior).
 
-    The override path is the live scraper's primary route — FCP Euro's
-    JSON-LD ``category`` field only carries the top-level breadcrumb
-    (e.g. "Exterior Body" for wheels/spoilers/headlights alike), so we
-    can't disambiguate the leaf category from the product page. Instead,
-    we anchor the slug to the seed-list URL we navigated through.
+    Category resolution order (per part):
+
+    1. Run the heuristic classifier on the part's own name+brand. If a
+       rule matches, that wins — the classifier sees what the part is,
+       and a category-page seed slug can't override that. This protects
+       us from broad-search seeds (e.g. K-Tuned ``/collections/shifters``
+       → ``ecu-tune``, Skunk2 ``civic+si`` → ``cold-air-intake``) that
+       carried mixed inventory and would otherwise mislabel everything
+       in their bucket.
+    2. If the heuristic misses, fall back to ``slug_override`` (the
+       seed's claimed category) as a soft default.
+    3. If there's no override either, fall back to ``map_category()``
+       on the vendor's category breadcrumb hint.
+    4. Drop the part if nothing landed.
+
+    The maintenance reclassifier (``scraper.reclassify``) runs the LLM
+    stage afterwards to mop up parts where the heuristic missed and
+    the override was wrong — that's the second line of defense.
     """
     n = 0
     with connect() as conn:
@@ -84,7 +98,10 @@ def _process_and_upsert(
                 p, slug_override = entry
             else:
                 p, slug_override = entry, None
-            slug = slug_override
+            # Heuristic on the part itself wins over a category-page seed slug.
+            slug = classify_heuristic(p.name, p.brand, slug_override)
+            if slug is None:
+                slug = slug_override
             if slug is None and p.category_hint:
                 slug = map_category(p.category_hint)
             if slug is None:
@@ -1122,11 +1139,13 @@ async def _live_scrape_k_tuned(
     *, max_products_per_category: int = 50
 ) -> list[tuple[NormalizedPart, str]]:
     """Live-scrape K-Tuned's seeded Honda categories. Same shape as
-    `_live_scrape_prl_motorsports`. The slug_override anchors each
-    seed URL to a sensible default leaf; the post-scrape reclassifier
-    refines individual products."""
+    `_live_scrape_prl_motorsports`. The slug_override is a soft prior
+    only — `_process_and_upsert` runs the heuristic classifier on each
+    product first, and the post-scrape reclassifier (LLM stage) mops up
+    anything the heuristic missed."""
     out: list[tuple[NormalizedPart, str]] = []
     fetched = 0
+    parse_misses = 0
     cats_done = 0
     async with httpx.AsyncClient(
         headers=HEADERS, timeout=20.0, follow_redirects=True
@@ -1151,14 +1170,20 @@ async def _live_scrape_k_tuned(
                     log.warning("product %s returned status %s", u, pr.status_code)
                     continue
                 p = k_tuned.parse_product_page(pr.text, url=u)
+                fetched += 1
                 if p:
                     out.append((p, slug))
-                fetched += 1
+                else:
+                    parse_misses += 1
+                    log.warning("k-tuned parse miss: %s", u)
                 if fetched % 25 == 0:
-                    log.info("progress: %d products from %d categories",
-                             fetched, cats_done + 1)
+                    log.info("progress: %d products from %d categories (%d parse misses)",
+                             fetched, cats_done + 1, parse_misses)
             cats_done += 1
-    log.info("scrape done: %d products from %d categories", fetched, cats_done)
+    log.info(
+        "scrape done: %d products from %d categories (%d parse misses)",
+        fetched, cats_done, parse_misses,
+    )
     return out
 
 
@@ -1183,12 +1208,14 @@ async def _live_scrape_skunk2(
     *, max_products_per_category: int = 40
 ) -> list[tuple[NormalizedPart, str]]:
     """Live-scrape Skunk2 via the search-result listing. Each query is one
-    seed; the slug_override anchors to a sensible default and the
-    post-scrape reclassifier sorts individual products into the right
-    leaf."""
+    seed; the slug_override is a soft prior only — `_process_and_upsert`
+    runs the heuristic classifier on each product, so a part discovered
+    via a broad search (e.g. ``civic+si``) doesn't get permanently
+    bucketed into the broad-search default leaf."""
     out: list[tuple[NormalizedPart, str]] = []
     seen: set[str] = set()
     fetched = 0
+    parse_misses = 0
     cats_done = 0
     async with httpx.AsyncClient(
         headers=HEADERS, timeout=20.0, follow_redirects=True
@@ -1207,7 +1234,9 @@ async def _live_scrape_skunk2(
                 r.text, base_url="https://www.skunk2.com"
             )
             # Dedup across queries — a single Civic Si manifold shows up under
-            # both "civic si" and "civic si manifold" searches.
+            # both "civic si" and "civic si manifold" searches. Safe now that
+            # category resolution runs per-product on the part itself, not
+            # off the seed slug.
             urls = [u for u in urls if u not in seen]
             seen.update(urls)
             log.info("%s [-> %s]: %d new product URLs", search_url, slug, len(urls))
@@ -1220,14 +1249,20 @@ async def _live_scrape_skunk2(
                     log.warning("product %s returned status %s", u, pr.status_code)
                     continue
                 p = skunk2.parse_product_page(pr.text, url=u)
+                fetched += 1
                 if p:
                     out.append((p, slug))
-                fetched += 1
+                else:
+                    parse_misses += 1
+                    log.warning("skunk2 parse miss: %s", u)
                 if fetched % 25 == 0:
-                    log.info("progress: %d products from %d searches",
-                             fetched, cats_done + 1)
+                    log.info("progress: %d products from %d searches (%d parse misses)",
+                             fetched, cats_done + 1, parse_misses)
             cats_done += 1
-    log.info("scrape done: %d products from %d searches", fetched, cats_done)
+    log.info(
+        "scrape done: %d products from %d searches (%d parse misses)",
+        fetched, cats_done, parse_misses,
+    )
     return out
 
 

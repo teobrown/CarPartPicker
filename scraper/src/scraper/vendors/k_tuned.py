@@ -32,7 +32,10 @@ from scraper.normalized import NormalizedPart
 VENDOR_SLUG = "k-tuned"
 BASE_HOST = "https://www.k-tuned.com"
 PRICE_RE = re.compile(r"\$([\d,]+\.\d{2})")
-META_BLOB_RE = re.compile(r"var meta = (\{.*?\});\n", re.DOTALL)
+# Tolerant of minified Shopify scripts: optional whitespace around `=`,
+# no required trailing newline, and the `};` is the only required boundary.
+# DOTALL so `.*?` can span lines on the unminified version.
+META_BLOB_RE = re.compile(r"var\s+meta\s*=\s*(\{.*?\})\s*;", re.DOTALL)
 
 
 def _strip_query(url: str) -> str:
