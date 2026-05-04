@@ -114,6 +114,17 @@ def test_fuel_system_parts_classify_to_fuel_system_leaf():
     assert classify_heuristic("Adjustable Fuel Pressure Regulator", "Aeromotive", None) == "fuel-system"
 
 
+def test_fuel_system_plural_titles_classify_to_fuel_system_leaf():
+    # Codex regression: the original rule was singular-only, so titles
+    # like "fuel injectors" / "fuel lines" / "fuel pumps" / "fuel rails"
+    # fell through to LLM/misc. Plural forms must hit the heuristic.
+    assert classify_heuristic("ID1050x Fuel Injectors Set", "Injector Dynamics", None) == "fuel-system"
+    assert classify_heuristic("Stainless Fuel Lines, Braided", "Russell", None) == "fuel-system"
+    assert classify_heuristic("Walbro Fuel Pumps Twin Setup", "Walbro", None) == "fuel-system"
+    assert classify_heuristic("Honda K-Series Fuel Rails", "Skunk2", None) == "fuel-system"
+    assert classify_heuristic("Aeromotive Fuel Regulators", "Aeromotive", None) == "fuel-system"
+
+
 def test_intake_old_prior_was_dropped_to_force_subtype_resolution():
     # Old `intake` leaf was an aggregation of 7 new leaves. Codex flagged 53.7%
     # of `intake-old` parts as falling through to cold-air-intake by default
@@ -184,3 +195,43 @@ def test_llm_api_failure_returns_none_does_not_cache(monkeypatch, tmp_path):
         cache_dir = tmp_path / "cache"
         if cache_dir.exists():
             assert list(cache_dir.iterdir()) == []
+
+
+def test_llm_cache_busts_when_classifier_version_changes(monkeypatch, tmp_path):
+    """A cache hit from an older classifier version must NOT be replayed.
+
+    Codex regression: cache was keyed only on (name, brand) so a maintenance
+    rerun under new prompt or rule logic kept serving stale classifications.
+    """
+    import json as _json
+    import hashlib as _hashlib
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    monkeypatch.setattr("scraper.category_classifier._LLM_CACHE_DIR", cache_dir)
+    # Plant a stale cache entry with the old (un-versioned) format under
+    # what would have been the old key.
+    name, brand, current = "Some Part", "Some Brand", None
+    new_key = _hashlib.sha256(
+        f"v3|{name}|{brand}|".encode("utf-8")
+    ).hexdigest()[:32]
+    (cache_dir / f"{new_key}.json").write_text(
+        _json.dumps({"slug": "wheels"}),  # no version field — stale
+        encoding="utf-8",
+    )
+    with patch("scraper.category_classifier._call_deepseek") as mock_llm:
+        mock_llm.return_value = "intercooler"
+        out = classify_with_llm(name, brand, current_slug=current)
+        assert out == "intercooler"  # fresh LLM call, not stale cache
+        mock_llm.assert_called_once()
+
+
+def test_llm_cache_key_includes_current_slug(monkeypatch, tmp_path):
+    """Same name+brand with different current_slug must NOT share a cache entry."""
+    monkeypatch.setattr("scraper.category_classifier._LLM_CACHE_DIR", tmp_path / "cache")
+    with patch("scraper.category_classifier._call_deepseek") as mock_llm:
+        mock_llm.side_effect = ["intercooler", "wheels"]
+        a = classify_with_llm("Generic Part", "Brand", current_slug="intercooler-old")
+        b = classify_with_llm("Generic Part", "Brand", current_slug="wheels-old")
+        assert a == "intercooler"
+        assert b == "wheels"
+        assert mock_llm.call_count == 2  # both hit the LLM, no shared cache
