@@ -145,7 +145,7 @@ export function PartPickerModal(p: PartPickerProps) {
               <p className="body-sm max-w-sm mx-auto">
                 {q
                   ? "No parts match your search for this category and vehicle. Try a different search term, or browse the full catalog."
-                  : "No parts in this category have been indexed for this vehicle yet. Catalog grows as we add more vendors — Phase 2 brings Honda, Toyota, and more."}
+                  : "No parts in this category fit your vehicle yet. Catalog grows weekly as we onboard new vendors — check back soon."}
               </p>
             </li>
           )}

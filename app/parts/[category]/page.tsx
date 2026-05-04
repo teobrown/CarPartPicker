@@ -77,8 +77,8 @@ export default async function CategoryPage({
               </h1>
               <p className="body-sm mt-3 max-w-xl">
                 {rows.length === 0
-                  ? `No ${known.name.toLowerCase()} parts indexed yet. Catalog grows as scrapers run.`
-                  : `${rows.length} ${known.name.toLowerCase()} part${rows.length === 1 ? "" : "s"} compatible across ${rows.length === 0 ? 0 : "the"} platform list.`}
+                  ? `No ${known.name.toLowerCase()} parts in the catalog yet — we're still onboarding vendors for this category.`
+                  : `${rows.length} ${known.name.toLowerCase()} part${rows.length === 1 ? "" : "s"} across the platforms we cover. Sorted by cheapest available.`}
               </p>
             </div>
             <div className="col-span-12 md:col-span-5">
@@ -191,11 +191,10 @@ function EmptyCategory({ category }: { category: string }) {
   return (
     <div className="py-24 text-center">
       <p className="eyebrow mb-3">[NO MATCHES]</p>
-      <p className="display-md mb-2">{category} catalog is empty</p>
+      <p className="display-md mb-2">{category} catalog is empty right now</p>
       <p className="body-sm max-w-md mx-auto">
-        Either no scraper has populated this category yet, or no vendor in the
-        current scrape set carries this part type. Check back after Phase 2 vendor
-        expansion.
+        We don{"'"}t have any {category.toLowerCase()} parts indexed yet. We{"'"}re
+        still onboarding vendors for this category — check back soon.
       </p>
       <Link href="/parts" className="arrow-link mt-6 inline-flex">
         Back to full catalog

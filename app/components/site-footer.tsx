@@ -25,18 +25,18 @@ export function SiteFooter() {
           </ul>
         </div>
         <div>
-          <p className="eyebrow mb-3">Status</p>
+          <p className="eyebrow mb-3">About</p>
           <ul className="space-y-2 body-sm font-[family-name:var(--font-mono)] text-[12px]">
-            <li><span className="pip mr-2 -translate-y-[1px] inline-block" />Phase 0 — foundation shipped</li>
-            <li><span className="pip mr-2 -translate-y-[1px] inline-block" />Phase 1 — MVP build shipped</li>
-            <li><span className="pip pip-amber mr-2 -translate-y-[1px] inline-block" />Phase 2 — vendor expansion (next)</li>
+            <li><span className="pip pip-live mr-2 -translate-y-[1px] inline-block" />Live · catalog growing</li>
+            <li><span className="pip mr-2 -translate-y-[1px] inline-block" />Compatibility-checked</li>
+            <li><span className="pip mr-2 -translate-y-[1px] inline-block" />Affiliate-supported · free for users</li>
           </ul>
         </div>
       </div>
       <div className="hairline-t">
         <div className="mx-auto max-w-[1400px] px-6 py-4 flex items-center justify-between text-[11px] tracking-[0.14em] uppercase font-[family-name:var(--font-mono)] text-fg-dim">
-          <span>© 2026 — local build · no telemetry</span>
-          <span>spec → plan → build</span>
+          <span>© 2026 Carbuildr</span>
+          <span>Built for people who build cars</span>
         </div>
       </div>
     </footer>

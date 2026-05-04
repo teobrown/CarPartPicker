@@ -16,8 +16,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const stats = await getCatalogStats();
   const description =
     stats.partCount === 0
-      ? "Browse the Carbuildr parts registry. Catalog grows as scrapers run."
-      : `${stats.partCount} parts indexed across ${stats.vendorCount} vendors. Filter by category or browse the full registry.`;
+      ? "Browse the Carbuildr parts catalog — catalog growing weekly."
+      : `${stats.partCount} parts across ${stats.vendorCount} vendors. Filter by category or browse the full catalog.`;
   return {
     title: "Catalog",
     description,
@@ -197,11 +197,11 @@ function CategoryChip({
 function EmptyState() {
   return (
     <div className="py-24 text-center">
-      <p className="eyebrow mb-3">[NO DATA]</p>
-      <p className="display-md mb-2">Catalog is empty</p>
+      <p className="eyebrow mb-3">[NO MATCHES]</p>
+      <p className="display-md mb-2">Catalog is empty right now</p>
       <p className="body-sm max-w-md mx-auto">
-        Run the FCP Euro fixture import or the live scraper to populate the
-        catalog. See <span className="font-[family-name:var(--font-mono)] text-fg">README.md</span> for commands.
+        We{"'"}re still onboarding vendors. Check back soon — the catalog grows
+        every week as we add new vendors and platforms.
       </p>
     </div>
   );

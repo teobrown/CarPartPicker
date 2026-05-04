@@ -44,7 +44,7 @@ export default async function Home() {
               <ul className="space-y-6 text-[11px] tracking-[0.14em] uppercase font-[family-name:var(--font-mono)] text-fg-dim">
                 <li data-reveal="0">
                   <span className="block text-fg-dim">REGISTRY</span>
-                  <span className="block text-fg mt-1">Carbuildr / 0.1</span>
+                  <span className="block text-fg mt-1">Carbuildr</span>
                 </li>
                 <li data-reveal="1">
                   <span className="block text-fg-dim">DOMAIN</span>
@@ -52,12 +52,12 @@ export default async function Home() {
                 </li>
                 <li data-reveal="2">
                   <span className="block text-fg-dim">SCOPE</span>
-                  <span className="block text-fg mt-1">8 platforms</span>
+                  <span className="block text-fg mt-1">{groups.length} platforms</span>
                 </li>
                 <li data-reveal="3">
-                  <span className="block text-fg-dim">PHASE</span>
+                  <span className="block text-fg-dim">STATUS</span>
                   <span className="block text-fg mt-1 inline-flex items-center gap-2">
-                    <span className="pip" /> 1 — MVP build
+                    <span className="pip pip-live" /> Live
                   </span>
                 </li>
               </ul>
@@ -201,61 +201,47 @@ export default async function Home() {
         </section>
 
         {/* ============================================================
-            PIPELINE
+            HOW IT WORKS
             ============================================================ */}
         <section className="mx-auto max-w-[1400px] px-6 py-24 grid grid-cols-12 gap-8">
           <div className="col-span-12 md:col-span-4">
-            <p className="eyebrow mb-3">[004] · How it ships</p>
-            <h2 className="display-lg">Spec → Plan → Build.</h2>
+            <p className="eyebrow mb-3">[004] · How it works</p>
+            <h2 className="display-lg">Pick. Browse.<br/>Build.</h2>
             <p className="body-sm mt-6 max-w-sm">
-              Phase 0 (data spine) and Phase 1 (build editor, compat engine,
-              affiliate redirector) shipped. Phase 2 expands the vendor list,
-              hardens fitment, and signs up affiliate programs.
+              Three steps from stock to spec sheet. Compatibility is checked the
+              moment you pick a vehicle — every part you see fits, or tells you why
+              it doesn{"'"}t.
             </p>
           </div>
           <div className="col-span-12 md:col-span-8">
             <ol className="space-y-px bg-line hairline">
               <PipelineRow
                 index="01"
-                label="SCHEMA"
-                title="Postgres on Neon, Drizzle ORM"
+                label="VEHICLE"
+                title="Pick your make, model, year, trim"
                 state="shipped"
-                detail="9 tables · bigint cents · numeric wheel/bore"
+                detail="Year + sub-model precision — Civic Si vs Type R, Mustang GT vs EcoBoost"
               />
               <PipelineRow
                 index="02"
-                label="SEED"
-                title="195 vehicles · 18 categories · 13 vendors"
+                label="CATALOG"
+                title="Browse parts that fit your car"
                 state="shipped"
-                detail="hand-curated platform specs · OEM bore + bolt patterns"
+                detail="Live vendor pricing · cheapest first · green ✓ / yellow ⚠ / red ❌ fitment"
               />
               <PipelineRow
                 index="03"
-                label="SCRAPERS"
-                title="9 vendors live · LLM fitment fallback"
+                label="BUILD"
+                title="Assemble a build, share the link"
                 state="shipped"
-                detail="rate-limited httpx · 429 retry · weekly per-vendor crons"
+                detail="One part per category · running total · permalink for forum + group chats"
               />
               <PipelineRow
                 index="04"
-                label="COMPAT"
-                title="Vehicle-aware engine · year + sub-model rules"
+                label="BUY"
+                title="Buy from the vendor with one click"
                 state="shipped"
-                detail="LLM-extracted fitment · model-conflict heuristic · hideIncompatible"
-              />
-              <PipelineRow
-                index="05"
-                label="BUILD EDITOR"
-                title="PCPartPicker-style category rows · share URL"
-                state="shipped"
-                detail="anonymous slug · per-row Buy via /go affiliate redirector"
-              />
-              <PipelineRow
-                index="06"
-                label="EXPAND"
-                title="More vendors. Affiliate signups. Fitment polish."
-                state="next"
-                detail="Subispeed · KW · 034 via Playwright · network applications"
+                detail="We earn a small affiliate kickback — that's how Carbuildr stays free"
               />
             </ol>
           </div>

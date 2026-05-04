@@ -237,38 +237,27 @@ export default async function PartDetail({
           </div>
         </section>
 
-        {/* compatibility placeholder */}
+        {/* fitment notice */}
         <section className="hairline-t bg-bg-deep">
           <div className="mx-auto max-w-[1400px] px-6 py-16">
-            <p className="eyebrow mb-3">[FIT] · Compatibility</p>
+            <p className="eyebrow mb-3">[FIT] · Confirm fitment</p>
             <h2 className="display-lg max-w-3xl">
-              <span className="text-fg-muted">Compatibility engine ships in </span>
-              <span className="text-fg">Phase 1</span>
+              <span className="text-fg-muted">Pick your car. We{"'"}ll filter to </span>
+              <span className="text-fg">parts that fit</span>
               <span className="text-signal">.</span>
             </h2>
             <p className="body-sm mt-4 max-w-2xl">
-              The Phase 0 catalog stores vendor-claimed fitment per part. The build
-              editor and live compat checks (green ✓ / yellow ⚠ caveat / red ❌
-              incompatible) ride on top of those rules in Phase 1, keyed off your
-              selected vehicle.
+              Carbuildr matches every part against your vehicle{"'"}s year, sub-model, and
+              trim. Green ✓ means it fits. Yellow ⚠ means it fits with a note (modify
+              required, year-specific revision, etc). Red ❌ means it{"'"}s incompatible.
+              Always double-check vendor-claimed fitment before purchasing.
             </p>
 
-            <div className="mt-10 grid gap-px bg-line hairline grid-cols-1 md:grid-cols-3">
-              <CompatCard
-                state="ok"
-                title="Compatibility lookup"
-                detail="SQL window query · ranks rules by status priority per vehicle"
-              />
-              <CompatCard
-                state="next"
-                title="Wheel/tire geometric fit"
-                detail="pure-function calculator · poke / rub thresholds from real spec sheets"
-              />
-              <CompatCard
-                state="next"
-                title="Cross-part rules"
-                detail="downpipe requires tune · catback conflicts with axleback · client-side"
-              />
+            <div className="mt-10 flex flex-wrap items-center gap-4">
+              <Link href="/" className="btn-primary">PICK YOUR VEHICLE</Link>
+              <Link href={`/parts/${p.categorySlug}`} className="arrow-link">
+                Browse all {p.categorySlug.replace(/-/g, " ")}
+              </Link>
             </div>
           </div>
         </section>
@@ -303,32 +292,3 @@ function SpecRow({
   );
 }
 
-function CompatCard({
-  state,
-  title,
-  detail,
-}: {
-  state: "ok" | "next" | "later";
-  title: string;
-  detail: string;
-}) {
-  const meta = {
-    ok: { pip: "pip", label: "READY" },
-    next: { pip: "pip pip-amber", label: "PHASE 1" },
-    later: { pip: "pip pip-dim", label: "LATER" },
-  }[state];
-  return (
-    <div className="bg-bg-deep p-5">
-      <div className="flex items-center justify-between mb-4">
-        <span className={meta.pip} />
-        <span className="text-[10px] tracking-[0.14em] uppercase font-[family-name:var(--font-mono)] text-fg-dim">
-          {meta.label}
-        </span>
-      </div>
-      <p className="display-md text-fg text-base leading-tight">{title}</p>
-      <p className="text-[11px] mt-3 font-[family-name:var(--font-mono)] text-fg-muted leading-relaxed">
-        {detail}
-      </p>
-    </div>
-  );
-}
