@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 
 type Crumb = { label: string; href?: string };
 
@@ -47,12 +48,25 @@ export async function SiteHeader({
 
         <nav className="hidden md:flex items-center gap-6 text-[12px] tracking-[0.08em] uppercase font-[family-name:var(--font-mono)] text-fg-muted">
           <NavLink href="/parts">Catalog</NavLink>
-          <NavLink href="/parts">Categories</NavLink>
-          <span className="text-fg-dim">/ Builds <span className="text-signal-2">soon</span></span>
+          <Show when="signed-in">
+            <NavLink href="/dashboard">My builds</NavLink>
+          </Show>
         </nav>
 
         <div className="flex items-center gap-3">
           <Link href="/parts" className="btn-ghost">Browse</Link>
+          <Show when="signed-out">
+            <SignInButton mode="modal">
+              <button className="btn-ghost">Sign in</button>
+            </SignInButton>
+          </Show>
+          <Show when="signed-in">
+            <UserButton
+              appearance={{
+                elements: { avatarBox: "w-8 h-8" },
+              }}
+            />
+          </Show>
         </div>
       </div>
 

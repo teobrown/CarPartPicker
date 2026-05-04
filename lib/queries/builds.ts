@@ -1,7 +1,46 @@
 import { db } from '@/lib/db/client';
-import { builds, buildItems, parts, categories, vehicles, vendorListings } from '@/lib/db/schema';
+import { builds, buildItems, parts, categories, vehicles, vendorListings, users } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { newBuildSlug } from '@/lib/slug';
+
+export class BuildOwnershipError extends Error {
+  constructor(public slug: string) {
+    super(`build ${slug} is owned by another user`);
+    this.name = 'BuildOwnershipError';
+  }
+}
+
+/**
+ * Resolve a build's mutability for a caller.
+ *
+ *   - returns { id, allowed: true }  if mutation is permitted
+ *   - returns { id, allowed: false } if the build is claimed by someone else
+ *   - throws if the build doesn't exist
+ *
+ * Mutation is permitted when:
+ *   - The build is anonymous (user_id IS NULL) — anyone with the slug edits.
+ *   - OR the actor's Clerk id resolves to a local user whose id matches
+ *     builds.user_id (the owner is editing their own build).
+ */
+async function resolveBuildForMutation(
+  slug: string,
+  actorClerkId: string | null,
+): Promise<{ id: number; allowed: boolean }> {
+  const [b] = await db
+    .select({ id: builds.id, userId: builds.userId })
+    .from(builds)
+    .where(eq(builds.slug, slug))
+    .limit(1);
+  if (!b) throw new Error(`build not found: ${slug}`);
+  if (b.userId === null) return { id: b.id, allowed: true };
+  if (!actorClerkId) return { id: b.id, allowed: false };
+  const [u] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.clerkId, actorClerkId))
+    .limit(1);
+  return { id: b.id, allowed: !!u && u.id === b.userId };
+}
 
 export type BuildItemRow = {
   position: number;
@@ -23,6 +62,9 @@ export type BuildDetail = {
   id: number;
   slug: string;
   createdAt: Date;
+  // userId NULL = anonymous build, anyone with the slug can edit.
+  // Once set (via /api/builds/claim), only that user can mutate.
+  userId: number | null;
   vehicle: {
     id: number;
     make: string;
@@ -59,6 +101,7 @@ export async function getBuild(slug: string): Promise<BuildDetail | null> {
       id: builds.id,
       slug: builds.slug,
       createdAt: builds.createdAt,
+      userId: builds.userId,
       vehicleId: vehicles.id,
       make: vehicles.make,
       model: vehicles.model,
@@ -134,6 +177,7 @@ export async function getBuild(slug: string): Promise<BuildDetail | null> {
     id: b.id,
     slug: b.slug,
     createdAt: b.createdAt,
+    userId: b.userId,
     vehicle: {
       id: b.vehicleId,
       make: b.make,
@@ -147,9 +191,14 @@ export async function getBuild(slug: string): Promise<BuildDetail | null> {
   };
 }
 
-export async function addBuildItem(opts: { buildSlug: string; partId: number; note?: string | null }): Promise<void> {
-  const [b] = await db.select({ id: builds.id }).from(builds).where(eq(builds.slug, opts.buildSlug)).limit(1);
-  if (!b) throw new Error(`build not found: ${opts.buildSlug}`);
+export async function addBuildItem(opts: {
+  buildSlug: string;
+  partId: number;
+  note?: string | null;
+  actorClerkId: string | null;
+}): Promise<void> {
+  const b = await resolveBuildForMutation(opts.buildSlug, opts.actorClerkId);
+  if (!b.allowed) throw new BuildOwnershipError(opts.buildSlug);
 
   // Look up the new part's category so we can replace any existing item in
   // the same category — PCPartPicker semantics: one part per category slot.
@@ -181,9 +230,13 @@ export async function addBuildItem(opts: { buildSlug: string; partId: number; no
   });
 }
 
-export async function removeBuildItem(opts: { buildSlug: string; partId: number }): Promise<void> {
-  const [b] = await db.select({ id: builds.id }).from(builds).where(eq(builds.slug, opts.buildSlug)).limit(1);
-  if (!b) throw new Error(`build not found: ${opts.buildSlug}`);
+export async function removeBuildItem(opts: {
+  buildSlug: string;
+  partId: number;
+  actorClerkId: string | null;
+}): Promise<void> {
+  const b = await resolveBuildForMutation(opts.buildSlug, opts.actorClerkId);
+  if (!b.allowed) throw new BuildOwnershipError(opts.buildSlug);
   await db.delete(buildItems).where(sql`${buildItems.buildId} = ${b.id} AND ${buildItems.partId} = ${opts.partId}`);
   await db.update(builds).set({ updatedAt: new Date() }).where(eq(builds.id, b.id));
 }

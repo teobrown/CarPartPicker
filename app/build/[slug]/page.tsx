@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { auth } from '@clerk/nextjs/server';
+import { db } from '@/lib/db/client';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { getBuild } from '@/lib/queries/builds';
 import { listCategoriesGrouped } from '@/lib/queries/parts';
 import { listCategoryPartsRankedForVehicle, type CompatStatus } from '@/lib/queries/compat';
@@ -7,6 +11,7 @@ import { SiteHeader } from '@/app/components/site-header';
 import { SiteFooter } from '@/app/components/site-footer';
 import { BuildRow } from '@/app/components/build-row';
 import { BuildSummary } from '@/app/components/build-summary';
+import { BuildActions } from '@/app/components/build-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +44,24 @@ export default async function BuildPage({
   const { slug } = await params;
   const build = await getBuild(slug);
   if (!build) return notFound();
+
+  // Resolve current user ownership of this build for the action buttons.
+  // - currentUserOwns is true only when signed-in user's local users.id
+  //   matches builds.user_id. Stays false for anonymous viewers.
+  // - isClaimed is true whenever the build has any owner (including the
+  //   current user). Disables Save for non-owners since the API would
+  //   return 409 anyway — surfacing that state up-front is cleaner UX.
+  const { userId: clerkId } = await auth();
+  let currentUserOwns = false;
+  if (clerkId && build.userId !== null) {
+    const [u] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.clerkId, clerkId))
+      .limit(1);
+    currentUserOwns = !!u && u.id === build.userId;
+  }
+  const isClaimed = build.userId !== null;
 
   const groups = await listCategoriesGrouped();
 
@@ -126,6 +149,12 @@ export default async function BuildPage({
             <BuildSummary build={build} />
           </aside>
         </div>
+
+        <BuildActions
+          buildSlug={slug}
+          currentUserOwns={currentUserOwns}
+          isClaimed={isClaimed}
+        />
       </main>
       <SiteFooter />
     </>

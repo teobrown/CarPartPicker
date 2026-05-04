@@ -1,6 +1,43 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
+
+// Brand-tuned Clerk modal appearance. Match the brutalist editorial
+// aesthetic of the rest of the site — near-black warm bg, signal amber
+// accent, hairline borders, mono labels. Without these overrides the
+// default Clerk modal looks mid-2020s SaaS and clashes with the brand.
+const clerkAppearance = {
+  variables: {
+    colorPrimary: "#F5C535",
+    colorBackground: "#1F1C19",
+    colorText: "#ECE7DF",
+    colorTextSecondary: "#8A8276",
+    colorInputBackground: "#161310",
+    colorInputText: "#ECE7DF",
+    colorNeutral: "#5A554C",
+    borderRadius: "0",
+    fontFamily: "var(--font-display), system-ui, sans-serif",
+  },
+  elements: {
+    card: { boxShadow: "none", border: "1px solid #3A352E" },
+    formButtonPrimary: {
+      textTransform: "uppercase" as const,
+      letterSpacing: "0.14em",
+      fontSize: "12px",
+      color: "#1F1C19",
+    },
+    socialButtonsBlockButton: {
+      border: "1px solid #3A352E",
+      borderRadius: "0",
+    },
+    formFieldInput: {
+      border: "1px solid #3A352E",
+      borderRadius: "0",
+    },
+    footer: { background: "transparent" },
+  },
+};
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-display",
@@ -50,14 +87,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${bricolage.variable} ${jetbrainsMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-bg text-fg">
-        <div className="grain-overlay" aria-hidden="true" />
-        {children}
-      </body>
-    </html>
+    <ClerkProvider appearance={clerkAppearance}>
+      <html
+        lang="en"
+        className={`${bricolage.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      >
+        <body className="min-h-full flex flex-col bg-bg text-fg">
+          <div className="grain-overlay" aria-hidden="true" />
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

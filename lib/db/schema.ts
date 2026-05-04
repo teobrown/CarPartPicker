@@ -149,16 +149,36 @@ export const fitmentRules = pgTable(
   })
 );
 
-export const builds = pgTable('builds', {
+// Users — local mirror of Clerk identities. clerk_id is the source of
+// truth (Clerk owns user lifecycle). We keep email + created_at so we
+// can show "saved by you" UI and audit without round-tripping to Clerk.
+// Synced via webhook /api/webhooks/clerk on user.created/updated/deleted.
+export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  slug: varchar('slug', { length: 16 }).notNull().unique(),
-  vehicleId: integer('vehicle_id')
-    .notNull()
-    .references(() => vehicles.id),
-  ownerUserId: integer('owner_user_id'),
+  clerkId: varchar('clerk_id', { length: 64 }).notNull().unique(),
+  email: varchar('email', { length: 256 }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const builds = pgTable(
+  'builds',
+  {
+    id: serial('id').primaryKey(),
+    slug: varchar('slug', { length: 16 }).notNull().unique(),
+    vehicleId: integer('vehicle_id')
+      .notNull()
+      .references(() => vehicles.id),
+    // user_id NULL = anonymous build (current default). Setting user_id
+    // claims the build to that user — see /api/builds/claim. Once set,
+    // only the owner can mutate; before that, anyone with the slug can.
+    userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    userIdx: index('builds_user_idx').on(t.userId),
+  })
+);
 
 export const buildItems = pgTable(
   'build_items',
