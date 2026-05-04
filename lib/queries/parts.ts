@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/client';
 import { parts, categories, vendorListings, vendors, vehicles } from '@/lib/db/schema';
-import { sql, eq, min, count, countDistinct, and, isNotNull } from 'drizzle-orm';
+import { sql, eq, min, count, countDistinct, and, isNotNull, type SQL } from 'drizzle-orm';
 
 export type PartListRow = {
   id: number;
@@ -13,7 +13,13 @@ export type PartListRow = {
   vendorCount: number;
 };
 
-const baseQuery = () =>
+// Picker-visible leaves only: child of a parent group AND not flagged
+// hidden_from_picker. Parent rows and the admin-only `misc` row must never
+// surface in user-facing catalog rows or the stats band.
+const visibleLeaf = () =>
+  and(isNotNull(categories.parentId), eq(categories.hiddenFromPicker, false));
+
+const baseQuery = (extra?: SQL | undefined) =>
   db
     .select({
       id: parts.id,
@@ -28,6 +34,7 @@ const baseQuery = () =>
     .from(parts)
     .innerJoin(categories, eq(categories.id, parts.categoryId))
     .leftJoin(vendorListings, eq(vendorListings.partId, parts.id))
+    .where(extra ? and(visibleLeaf(), extra) : visibleLeaf())
     .groupBy(parts.id, categories.slug);
 
 export async function listAllParts(): Promise<PartListRow[]> {
@@ -35,7 +42,7 @@ export async function listAllParts(): Promise<PartListRow[]> {
 }
 
 export async function listPartsByCategory(slug: string): Promise<PartListRow[]> {
-  return baseQuery().where(eq(categories.slug, slug));
+  return baseQuery(eq(categories.slug, slug));
 }
 
 export type VendorListingRow = {
@@ -116,16 +123,25 @@ export type CatalogStats = {
 
 export async function getCatalogStats(): Promise<CatalogStats> {
   const [v] = await db.select({ n: count() }).from(vehicles);
-  const [p] = await db.select({ n: count() }).from(parts);
-  const [l] = await db.select({ n: count() }).from(vendorListings);
+  // partCount + listingCount surface in the homepage stats band and the
+  // catalog header. They must match what the user actually sees in the
+  // catalog table — i.e. only parts on picker-visible leaves.
+  const [p] = await db
+    .select({ n: count() })
+    .from(parts)
+    .innerJoin(categories, eq(categories.id, parts.categoryId))
+    .where(visibleLeaf());
+  const [l] = await db
+    .select({ n: count() })
+    .from(vendorListings)
+    .innerJoin(parts, eq(parts.id, vendorListings.partId))
+    .innerJoin(categories, eq(categories.id, parts.categoryId))
+    .where(visibleLeaf());
   const [vd] = await db.select({ n: count() }).from(vendors);
-  // categoryCount surfaces in the homepage stats band as "Categories" — the
-  // user-facing number, so count only picker-visible leaves (no parent groups,
-  // no admin-only `misc`).
   const [c] = await db
     .select({ n: count() })
     .from(categories)
-    .where(and(isNotNull(categories.parentId), eq(categories.hiddenFromPicker, false)));
+    .where(visibleLeaf());
   const [pg] = await db
     .select({ n: countDistinct(vehicles.model) })
     .from(vehicles);

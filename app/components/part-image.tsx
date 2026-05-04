@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * PartImage — specimen-plate part thumbnail.
  *
@@ -5,7 +7,8 @@
  * a brutalist "specimen plate" treatment: white background, sharp hairline
  * frame, generous padding, object-contain so the part shape (asymmetric
  * wheels, exhausts, etc.) shows whole. Falls back to a precise mono-typed
- * "—" placeholder when imageUrl is missing — same hairline frame so the
+ * placeholder when imageUrl is missing OR fails to load (dead CDN URL,
+ * mixed-content http on https page, etc.) — same hairline frame so the
  * row geometry stays even.
  *
  * Native <img> rather than next/image: Carbuildr ingests vendor CDN URLs
@@ -14,6 +17,8 @@
  * than benefit for thumbnail-grade images. We add `loading="lazy"`
  * + `decoding="async"` for behavior-equivalent perf.
  */
+
+import { useState } from 'react';
 
 type Size = 'sm' | 'md' | 'lg' | 'hero';
 
@@ -35,16 +40,19 @@ const SIZE_CLASS: Record<Size, string> = {
 };
 
 export function PartImage({ src, alt, size = 'md', index, className = '' }: Props) {
+  const [failed, setFailed] = useState(false);
   const frameClasses =
     `relative inline-block bg-white text-black hairline overflow-hidden shrink-0 ${SIZE_CLASS[size]} ${className}`.trim();
+  const showImg = src && !failed;
   return (
     <div className={frameClasses}>
-      {src ? (
+      {showImg ? (
         <img
           src={src}
           alt={alt}
           loading="lazy"
           decoding="async"
+          onError={() => setFailed(true)}
           className="w-full h-full object-contain mix-blend-multiply"
         />
       ) : (

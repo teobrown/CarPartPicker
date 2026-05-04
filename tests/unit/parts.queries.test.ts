@@ -17,7 +17,14 @@ describe('parts queries', () => {
     const vendCount = await db.select().from(vendors).limit(1);
     if (vendCount.length === 0) await runVendorSeed();
 
-    const [intake] = await db.select().from(categories).where(sql`slug = 'intake'`).limit(1);
+    // `intake` is now a PARENT slug — parts on parents don't surface
+    // in the catalog (Codex Fix #1). Use the cold-air-intake leaf so the
+    // part is picker-visible.
+    const [intake] = await db
+      .select()
+      .from(categories)
+      .where(sql`slug = 'cold-air-intake'`)
+      .limit(1);
     const [v] = await db.select().from(vendors).where(sql`slug = 'fcp-euro'`).limit(1);
     const [p] = await db
       .insert(parts)
@@ -47,9 +54,9 @@ describe('parts queries', () => {
   });
 
   it('listPartsByCategory filters by category slug', async () => {
-    const intakeRows = await listPartsByCategory('intake');
-    expect(intakeRows.every((r) => r.categorySlug === 'intake')).toBe(true);
-    const exhaustRows = await listPartsByCategory('catback');
+    const intakeRows = await listPartsByCategory('cold-air-intake');
+    expect(intakeRows.every((r) => r.categorySlug === 'cold-air-intake')).toBe(true);
+    const exhaustRows = await listPartsByCategory('catback-exhaust');
     expect(exhaustRows.length).toBe(0);
   });
 

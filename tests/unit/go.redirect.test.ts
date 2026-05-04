@@ -36,13 +36,19 @@ beforeAll(async () => {
     .from(categories)
     .where(eq(categories.slug, 'intake'))
     .limit(1);
-  // Use FCP Euro: affiliateParam='avad', affiliateValue='carbuildr'.
+  // Use FCP Euro: affiliateParam='avad'. Production seed leaves
+  // affiliate_value NULL until a real publisher code lands; for this
+  // test we set a fake value so we can exercise the param-append path.
   const [v] = await db
     .select()
     .from(vendors)
     .where(eq(vendors.slug, 'fcp-euro'))
     .limit(1);
   vendorId = v.id;
+  await db
+    .update(vendors)
+    .set({ affiliateValue: 'carbuildr' })
+    .where(eq(vendors.id, vendorId));
 
   const [p] = await db
     .insert(parts)
@@ -201,6 +207,28 @@ describe('GET /go/[listingId]', () => {
     } finally {
       await db.delete(vendorListings).where(eq(vendorListings.id, l.id));
       await db.delete(parts).where(eq(parts.id, p.id));
+    }
+  });
+
+  it('does not append affiliate param when affiliate_value is null', async () => {
+    // Production seed leaves every vendor's affiliate_value NULL until a
+    // real publisher code is configured. A null value must cleanly skip
+    // the param append — no fake placeholder gets shipped to the vendor.
+    await db
+      .update(vendors)
+      .set({ affiliateValue: null })
+      .where(eq(vendors.id, vendorId));
+    try {
+      const res = await callRoute(`/go/${listingId}`);
+      expect(res.status).toBe(302);
+      const target = new URL(res.headers.get('location')!);
+      expect(target.searchParams.has('avad')).toBe(false);
+    } finally {
+      // Restore for the remaining tests in this describe block.
+      await db
+        .update(vendors)
+        .set({ affiliateValue: 'carbuildr' })
+        .where(eq(vendors.id, vendorId));
     }
   });
 
