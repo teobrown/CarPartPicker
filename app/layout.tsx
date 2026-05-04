@@ -58,14 +58,6 @@ export const metadata: Metadata = {
     title: "Carbuildr — Pit Wall",
     description: SHARE_DESCRIPTION,
   },
-  // Impact Radius affiliate-network site verification. Renders as
-  //   <meta name="impact-site-verification" content="...">
-  // Their docs example uses `value=`, but the HTML standard is `content=`
-  // and Impact's verifier accepts it. If they ever flag verification
-  // failure, swap to an inline JSX <meta> with the literal `value` attr.
-  other: {
-    "impact-site-verification": "44264c6e-3e57-4447-be1e-18982c8f6457",
-  },
 };
 
 export default function RootLayout({
@@ -78,6 +70,17 @@ export default function RootLayout({
       lang="en"
       className={`${bricolage.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Impact Radius affiliate-network site verification.
+            Their docs require `value=` (not the HTML-standard `content=`),
+            so we render the meta tag inline rather than via Next's
+            metadata API (which only emits `content=`). */}
+        <meta
+          name="impact-site-verification"
+          // @ts-expect-error -- non-standard `value` attribute per Impact's spec
+          value="44264c6e-3e57-4447-be1e-18982c8f6457"
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-bg text-fg">
         <ClerkProvider appearance={clerkAppearance}>
           <div className="grain-overlay" aria-hidden="true" />
