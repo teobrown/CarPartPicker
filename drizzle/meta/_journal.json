@@ -71,6 +71,13 @@
       "when": 1778100000000,
       "tag": "0009_users_and_builds_user_id",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778200000000,
+      "tag": "0010_cascade_builds_on_user_delete",
+      "breakpoints": true
     }
   ]
 }

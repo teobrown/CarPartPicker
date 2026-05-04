@@ -171,7 +171,15 @@ export const builds = pgTable(
     // user_id NULL = anonymous build (current default). Setting user_id
     // claims the build to that user — see /api/builds/claim. Once set,
     // only the owner can mutate; before that, anyone with the slug can.
-    userId: integer('user_id').references(() => users.id, { onDelete: 'set null' }),
+    //
+    // ON DELETE CASCADE (not SET NULL) is intentional and security-relevant:
+    // if a user deletes their Clerk account (webhook hits user.deleted ->
+    // we DELETE the local users row), every build they claimed must go
+    // with them. Reverting to NULL would silently re-anonymize the build
+    // and expose it to anyone who had the slug — bad UX for the deleting
+    // user and a small attacker path (claim, delete account, free up build).
+    // Codex review-4 flagged this; migration 0010 lifts the constraint.
+    userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
