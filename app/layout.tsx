@@ -15,28 +15,32 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+// description is what shows up under the title in iMessage/Slack/Discord
+// link cards and in Google search results. Lead with the elevator pitch
+// and keep it under ~155 chars so it doesn't get truncated. The OG image
+// (app/opengraph-image.tsx) handles the visual side of link cards.
+const SHARE_DESCRIPTION =
+  "Pick your car. Get a compatibility-checked catalog of bolt-ons, suspension, wheels, and body mods. Build your car without the forum tabs.";
+
 export const metadata: Metadata = {
   title: {
     default: "Carbuildr — Pit Wall",
     template: "%s · Carbuildr",
   },
-  description:
-    "PCPartPicker for tuner cars. Compatibility-checked mod builds with affiliate buy-through.",
+  description: SHARE_DESCRIPTION,
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   ),
   openGraph: {
     title: "Carbuildr — Pit Wall",
-    description:
-      "PCPartPicker for tuner cars. Compatibility-checked mod builds with affiliate buy-through.",
+    description: SHARE_DESCRIPTION,
     type: "website",
     siteName: "Carbuildr",
   },
   twitter: {
     card: "summary_large_image",
     title: "Carbuildr — Pit Wall",
-    description:
-      "PCPartPicker for tuner cars. Compatibility-checked mod builds with affiliate buy-through.",
+    description: SHARE_DESCRIPTION,
   },
 };
 
