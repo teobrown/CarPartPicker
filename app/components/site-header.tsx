@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { VehicleIndicator, getSelectedVehicle } from "@/app/components/vehicle-context";
 
 type Crumb = { label: string; href?: string };
 
@@ -10,9 +9,7 @@ export async function SiteHeader({
   crumbs?: Crumb[];
   liveCount?: { label: string; value: number | string }[];
 }) {
-  const selectedVehicle = await getSelectedVehicle();
   const tickers = liveCount ?? [];
-  const showSeparator = tickers.length > 0 && selectedVehicle !== null;
 
   return (
     <header className="hairline-b">
@@ -34,8 +31,6 @@ export async function SiteHeader({
                 <span className="text-fg tabular">{s.value}</span>
               </span>
             ))}
-            {showSeparator && <span aria-hidden className="text-line">|</span>}
-            <VehicleIndicator />
           </div>
         </div>
       </div>
