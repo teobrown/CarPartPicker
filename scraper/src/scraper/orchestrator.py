@@ -91,9 +91,17 @@ def _process_and_upsert(
     stage afterwards to mop up parts where the heuristic missed and
     the override was wrong — that's the second line of defense.
     """
+    # Materialize once so we can short-circuit when a vendor scrape
+    # returned zero products (e.g. Steeda anti-bot 403'd every PDP).
+    # No point opening a DB connection just to immediately close it.
+    parts_list = list(parts)
+    if not parts_list:
+        log.info("no parts to upsert — skipping DB connection")
+        return 0
+
     n = 0
     with connect() as conn:
-        for entry in parts:
+        for entry in parts_list:
             if isinstance(entry, tuple):
                 p, slug_override = entry
             else:
