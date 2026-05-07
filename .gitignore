@@ -47,3 +47,4 @@ yarn-error.log*
 # scraper LLM cache (per-run, not committed)
 .cache/
 scraper/.cache/
+GITHUB_SECRETS.txt
